@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Trash2, Beaker, Users } from 'lucide-react';
+import { Edit, Trash2, Beaker, Users, StickyNote } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { PantoneColor } from '../types';
 
@@ -87,11 +87,16 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
         )}
 
         {color.notes && (
-          <div className={`p-2 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
-            <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-              Заметки:
-            </p>
-            <p className={`text-sm line-clamp-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className={`p-3 rounded-lg ${
+            isDark ? 'bg-amber-900/30' : 'bg-amber-50'
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <StickyNote className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+              <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                Заметки:
+              </p>
+            </div>
+            <p className={`text-sm whitespace-pre-wrap ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
               {color.notes}
             </p>
           </div>
