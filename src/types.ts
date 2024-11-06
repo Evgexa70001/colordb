@@ -3,10 +3,16 @@ export interface PantoneColor {
   name: string;
   hex: string;
   category: string;
-  recipe?: string;
+  recipe?: string | undefined;
   customers?: string[];
   inStock: boolean;
-  notes?: string;
+  notes?: string | undefined;
+}
+
+export interface User {
+  uid: string;
+  email: string | null;
+  isAdmin: boolean;
 }
 
 export interface ColorModalProps {
