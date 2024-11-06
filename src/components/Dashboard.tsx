@@ -16,7 +16,7 @@ import type { PantoneColor } from '../types';
 type SortField = 'name' | 'inStock';
 type SortOrder = 'asc' | 'desc';
 
-const SIMILAR_COLOR_THRESHOLD = 25; // Delta E threshold for similar colors
+const SIMILAR_COLOR_THRESHOLD = 8; // Delta E threshold for similar colors
 
 export default function Dashboard() {
   const { isDark, toggleTheme } = useTheme();
