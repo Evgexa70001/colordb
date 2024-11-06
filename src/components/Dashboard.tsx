@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Plus, FolderPlus, Trash2 } from 'lucide-react';
+import { Sun, Moon, Plus, FolderPlus, Trash2, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import ColorCard from './ColorCard';
@@ -16,11 +16,11 @@ import type { PantoneColor } from '../types';
 type SortField = 'name' | 'inStock';
 type SortOrder = 'asc' | 'desc';
 
-const SIMILAR_COLOR_THRESHOLD = 8; // Delta E threshold for similar colors
+const SIMILAR_COLOR_THRESHOLD = 8;
 
 export default function Dashboard() {
   const { isDark, toggleTheme } = useTheme();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [colors, setColors] = useState<PantoneColor[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<PantoneColor | null>(null);
@@ -39,7 +39,10 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [fetchedColors, fetchedCategories] = await Promise.all([getColors(), getCategories()]);
+      const [fetchedColors, fetchedCategories] = await Promise.all([
+        getColors(),
+        getCategories()
+      ]);
       setColors(fetchedColors);
       setCategories(fetchedCategories);
     } catch (error) {
@@ -58,14 +61,17 @@ export default function Dashboard() {
 
   const getSimilarColors = (targetColor: PantoneColor): PantoneColor[] => {
     if (!isValidHexColor(targetColor.hex)) return [];
-
+    
     return colors
-      .filter((color) => color.id !== targetColor.id && isValidHexColor(color.hex))
-      .map((color) => {
+      .filter(color => 
+        color.id !== targetColor.id && 
+        isValidHexColor(color.hex)
+      )
+      .map(color => {
         const distance = getColorDistance(targetColor.hex, color.hex);
         return { ...color, distance };
       })
-      .filter((color) => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
+      .filter(color => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0))
       .slice(0, 6);
   };
@@ -127,16 +133,17 @@ export default function Dashboard() {
   };
 
   const filteredColors = colors
-    .filter((color) => {
-      const matchesSearch =
-        color.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    .filter(color => {
+      const matchesSearch = color.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         color.hex.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || color.category === selectedCategory;
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
       if (sortField === 'name') {
-        return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+        return sortOrder === 'asc' 
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
       } else {
         return sortOrder === 'asc'
           ? Number(b.inStock) - Number(a.inStock)
@@ -148,15 +155,23 @@ export default function Dashboard() {
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <header className={`py-4 px-6 ${isDark ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Pantone Color Manager
-          </h1>
+          <div className="flex items-center space-x-2">
+            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Pantone Color Manager
+            </h1>
+            {user?.isAdmin && (
+              <ShieldAlert className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+            )}
+          </div>
           <div className="flex items-center space-x-4">
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-full ${
-                isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-              }`}>
+                isDark
+                  ? 'hover:bg-gray-700 text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+            >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
@@ -165,7 +180,8 @@ export default function Dashboard() {
                 isDark
                   ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}>
+              }`}
+            >
               Выйти
             </button>
           </div>
@@ -175,22 +191,28 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsNewColorModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              <Plus className="w-4 h-4" />
-              Создать цвет
-            </button>
-            <button
-              onClick={() => setIsNewCategoryModalOpen(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md ${
-                isDark
-                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}>
-              <FolderPlus className="w-4 h-4" />
-              Создать категорию
-            </button>
+            {user?.isAdmin && (
+              <>
+                <button
+                  onClick={() => setIsNewColorModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Добавить цвет
+                </button>
+                <button
+                  onClick={() => setIsNewCategoryModalOpen(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md ${
+                    isDark
+                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  Добавить категорию
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -199,8 +221,11 @@ export default function Dashboard() {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className={`rounded-md border-gray-300 pr-10 ${
-                  isDark ? 'bg-gray-700 text-gray-200 border-gray-600' : 'bg-white text-gray-900'
-                }`}>
+                  isDark
+                    ? 'bg-gray-700 text-gray-200 border-gray-600'
+                    : 'bg-white text-gray-900'
+                }`}
+              >
                 <option value="all">Все категории</option>
                 {categories.map((category) => (
                   <option key={category} value={category}>
@@ -208,23 +233,18 @@ export default function Dashboard() {
                   </option>
                 ))}
               </select>
-              {selectedCategory !== 'all' && (
+              {user?.isAdmin && selectedCategory !== 'all' && (
                 <button
                   onClick={() => {
-                    if (
-                      confirm(
-                        `Вы уверены, что хотите удалить категорию "${selectedCategory}"? Это действие необратимо.`,
-                      )
-                    ) {
+                    if (confirm(`Вы точно хотите удалить категорию "${selectedCategory}"? Все цвета с этой категории будут перенесены в категорию - без категории".`)) {
                       handleDeleteCategory(selectedCategory);
                     }
                   }}
-                  className="absolute right-10 top-1/2 -translate-y-1/2">
-                  <Trash2
-                    className={`w-4 h-4 ${
-                      isDark ? 'text-red-400' : 'text-red-500'
-                    } hover:text-red-600`}
-                  />
+                  className="absolute right-10 top-1/2 -translate-y-1/2"
+                >
+                  <Trash2 className={`w-4 h-4 ${
+                    isDark ? 'text-red-400' : 'text-red-500'
+                  } hover:text-red-600`} />
                 </button>
               )}
             </div>
@@ -240,7 +260,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <input
             type="text"
-            placeholder="Поиск цветов..."
+            placeholder="Поиск цвета..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={`w-full px-4 py-2 rounded-lg ${
@@ -257,14 +277,21 @@ export default function Dashboard() {
               key={color.id}
               color={color}
               onEdit={() => {
-                setSelectedColor(color);
-                setIsEditModalOpen(true);
+                if (user?.isAdmin) {
+                  setSelectedColor(color);
+                  setIsEditModalOpen(true);
+                }
               }}
               onClick={() => {
                 setSelectedColor(color);
                 setIsDetailsModalOpen(true);
               }}
-              onDelete={() => handleDeleteColor(color.id)}
+              onDelete={() => {
+                if (user?.isAdmin && confirm('Вы точно хотите удалить этот цвет?')) {
+                  handleDeleteColor(color.id);
+                }
+              }}
+              isAdmin={user?.isAdmin || false}
             />
           ))}
         </div>
