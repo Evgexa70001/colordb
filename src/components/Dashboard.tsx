@@ -134,8 +134,14 @@ export default function Dashboard() {
 
   const filteredColors = colors
     .filter(color => {
-      const matchesSearch = color.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        color.hex.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        color.name.toLowerCase().includes(searchLower) ||
+        color.hex.toLowerCase().includes(searchLower) ||
+        color.customers?.some(customer => 
+          customer.toLowerCase().includes(searchLower)
+        ) ||
+        false;
       const matchesCategory = selectedCategory === 'all' || color.category === selectedCategory;
       return matchesSearch && matchesCategory;
     })
@@ -260,7 +266,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <input
             type="text"
-            placeholder="Поиск цвета..."
+            placeholder="Поиск по названию, HEX-коду или клиентам..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={`w-full px-4 py-2 rounded-lg ${
