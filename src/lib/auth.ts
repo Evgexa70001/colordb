@@ -1,9 +1,9 @@
 import { auth } from './firebase';
-import {
+import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  AuthError,
+  AuthError
 } from 'firebase/auth';
 
 export async function loginUser(email: string, password: string) {

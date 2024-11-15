@@ -7,12 +7,20 @@ export interface PantoneColor {
   customers?: string[];
   inStock: boolean;
   notes?: string | undefined;
+  manager?: string | undefined;
 }
 
-export interface User {
-  uid: string;
-  email: string | null;
-  isAdmin: boolean;
+export interface Recipe {
+  totalAmount: number;
+  material: string;
+  anilox?: string;
+  comment?: string;
+  items: RecipeItem[];
+}
+
+export interface RecipeItem {
+  paint: string;
+  amount: number;
 }
 
 export interface ColorModalProps {
@@ -42,4 +50,10 @@ export interface NewCategoryModalProps {
   onClose: () => void;
   onSave: (category: string) => void;
   existingCategories: string[];
+}
+
+export interface User {
+  uid: string;
+  email: string | null;
+  isAdmin: boolean;
 }

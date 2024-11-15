@@ -3,12 +3,7 @@ import { Dialog } from '@headlessui/react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { NewCategoryModalProps } from '../types';
 
-export default function NewCategoryModal({
-  isOpen,
-  onClose,
-  onSave,
-  existingCategories,
-}: NewCategoryModalProps) {
+export default function NewCategoryModal({ isOpen, onClose, onSave, existingCategories }: NewCategoryModalProps) {
   const { isDark } = useTheme();
   const [category, setCategory] = useState('');
 
@@ -29,21 +24,23 @@ export default function NewCategoryModal({
       : 'border-gray-300 focus:border-blue-500'
   }`;
 
-  const labelClasses = `block text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`;
+  const labelClasses = `block text-sm font-medium ${
+    isDark ? 'text-gray-200' : 'text-gray-700'
+  }`;
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel
-          className={`mx-auto max-w-lg w-full rounded-lg p-6 ${
-            isDark ? 'bg-gray-800' : 'bg-white'
+        <Dialog.Panel className={`mx-auto max-w-lg w-full rounded-lg p-6 ${
+          isDark ? 'bg-gray-800' : 'bg-white'
+        }`}>
+          <Dialog.Title className={`text-lg font-medium mb-4 ${
+            isDark ? 'text-gray-100' : 'text-gray-900'
           }`}>
-          <Dialog.Title
-            className={`text-lg font-medium mb-4 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
             Добавить новую категорию
           </Dialog.Title>
-
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={labelClasses}>Название категории</label>
@@ -64,12 +61,14 @@ export default function NewCategoryModal({
                   isDark
                     ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}>
+                }`}
+              >
                 Отмена
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
                 Добавить
               </button>
             </div>

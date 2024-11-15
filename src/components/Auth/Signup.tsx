@@ -42,7 +42,7 @@ export default function Signup() {
           <UserPlus className="w-12 h-12 text-blue-600" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Регистрация аккаунта
+          Create your account
         </h2>
       </div>
 
@@ -57,7 +57,7 @@ export default function Signup() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Указать электронную почту
+                Email address
               </label>
               <input
                 id="email"
@@ -71,7 +71,7 @@ export default function Signup() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Укажите пароль
+                Password
               </label>
               <input
                 id="password"
@@ -85,7 +85,7 @@ export default function Signup() {
 
             <div>
               <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                Повторите пароль
+                Confirm Password
               </label>
               <input
                 id="confirm-password"
@@ -100,8 +100,9 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
-              {loading ? 'Загрузка...' : 'Регистрация'}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {loading ? 'Creating account...' : 'Sign up'}
             </button>
           </form>
 
@@ -111,15 +112,18 @@ export default function Signup() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Уже зарегистрирован?</span>
+                <span className="px-2 bg-white text-gray-500">
+                  Already have an account?
+                </span>
               </div>
             </div>
 
             <div className="mt-6">
               <Link
                 to="/login"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100">
-                Войти
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100"
+              >
+                Sign in
               </Link>
             </div>
           </div>

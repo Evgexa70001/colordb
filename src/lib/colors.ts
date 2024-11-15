@@ -1,4 +1,4 @@
-import {
+import { 
   collection,
   getDocs,
   addDoc,
@@ -7,7 +7,7 @@ import {
   updateDoc,
   serverTimestamp,
   DocumentReference,
-  FirestoreError,
+  FirestoreError
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { PantoneColor } from '../types';
@@ -17,13 +17,10 @@ export async function getColors(): Promise<PantoneColor[]> {
     const colorsRef = collection(db, 'colors');
     const snapshot = await getDocs(colorsRef);
     return snapshot.docs
-      .map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-          } as PantoneColor),
-      )
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as PantoneColor))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     const firestoreError = error as FirestoreError;
@@ -41,7 +38,7 @@ export async function saveColor(color: Omit<PantoneColor, 'id'>): Promise<Docume
       inStock: color.inStock ?? true,
       category: color.category || 'Uncategorized',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
     return docRef;
   } catch (error) {
@@ -58,7 +55,7 @@ export async function updateColor(color: PantoneColor): Promise<void> {
       recipe: color.recipe || '',
       customers: color.customers || [],
       category: color.category || 'Uncategorized',
-      updatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
   } catch (error) {
     const firestoreError = error as FirestoreError;

@@ -1,4 +1,4 @@
-import {
+import { 
   collection,
   getDocs,
   addDoc,
@@ -7,7 +7,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
-  FirestoreError,
+  FirestoreError
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { updateColor, getColors } from './colors';
@@ -20,10 +20,10 @@ export async function getCategories(): Promise<string[]> {
     const categoriesRef = collection(db, 'categories');
     const snapshot = await getDocs(categoriesRef);
     const categories = snapshot.docs
-      .map((doc) => ({ id: doc.id, name: doc.data().name as string }))
-      .filter((cat) => cat.name && cat.name !== UNCATEGORIZED)
+      .map(doc => ({ id: doc.id, name: doc.data().name as string }))
+      .filter(cat => cat.name && cat.name !== UNCATEGORIZED)
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((cat) => cat.name);
+      .map(cat => cat.name);
 
     // Always ensure Uncategorized exists in the database but don't return it
     const hasUncategorized = await getCategoryByName(UNCATEGORIZED);
@@ -59,7 +59,7 @@ export async function addCategory(name: string): Promise<void> {
     const categoriesRef = collection(db, 'categories');
     const q = query(categoriesRef, where('name', '==', name.trim()));
     const snapshot = await getDocs(q);
-
+    
     if (!snapshot.empty) {
       throw new Error('Category already exists');
     }
@@ -67,7 +67,7 @@ export async function addCategory(name: string): Promise<void> {
     await addDoc(categoriesRef, {
       name: name.trim(),
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
   } catch (error) {
     if (error instanceof Error) {
@@ -88,17 +88,15 @@ export async function deleteCategory(categoryName: string): Promise<void> {
 
     // Get all colors with this category
     const colors = await getColors();
-    const affectedColors = colors.filter((color) => color.category === categoryName);
+    const affectedColors = colors.filter(color => color.category === categoryName);
 
     // Update all affected colors to use the Uncategorized category
-    await Promise.all(
-      affectedColors.map((color) =>
-        updateColor({
-          ...color,
-          category: UNCATEGORIZED,
-        }),
-      ),
-    );
+    await Promise.all(affectedColors.map(color => 
+      updateColor({
+        ...color,
+        category: UNCATEGORIZED
+      })
+    ));
 
     // Delete the category
     const categoryRef = doc(db, 'categories', categoryId);
