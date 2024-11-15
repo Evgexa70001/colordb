@@ -300,16 +300,16 @@ export default function Dashboard() {
       </header>
 
       {/* Sidebar */}
-      <aside
-        id="sidebar"
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-r ${
-          isDark ? 'border-gray-700' : 'border-gray-200'
-        }`}
-      >
-        <div className="h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto pt-20 pb-4">
+       <aside
+          id="sidebar"
+          className={`fixed left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } lg:translate-x-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-r ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          } top-16 bottom-0`}
+        >
+       <div className="h-full flex flex-col">
+          <div className="flex-1 overflow-y-auto py-4">
             <div className="px-4 mb-4">
               <input
                 type="text"
