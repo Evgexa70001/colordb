@@ -165,14 +165,74 @@ export function getColorDistance(hex1: string, hex2: string): number {
   
   const lab1 = rgbToLab(...rgb1);
   const lab2 = rgbToLab(...rgb2);
-  
-  // Calculate Delta E (CIE76)
-  return Math.sqrt(
-    Math.pow(lab2[0] - lab1[0], 2) +
-    Math.pow(lab2[1] - lab1[1], 2) +
-    Math.pow(lab2[2] - lab1[2], 2)
+
+  // Используем CIEDE2000 вместо CIE76
+  const [L1, a1, b1] = lab1;
+  const [L2, a2, b2] = lab2;
+
+  const kL = 1;
+  const kC = 1;
+  const kH = 1;
+
+  const C1 = Math.sqrt(pow2(a1) + pow2(b1));
+  const C2 = Math.sqrt(pow2(a2) + pow2(b2));
+  const Cb = (C1 + C2) / 2;
+
+  const G = 0.5 * (1 - Math.sqrt(pow2(Cb) / (pow2(Cb) + 25 * 25 * 25 * 25)));
+
+  const a1p = (1 + G) * a1;
+  const a2p = (1 + G) * a2;
+
+  const C1p = Math.sqrt(pow2(a1p) + pow2(b1));
+  const C2p = Math.sqrt(pow2(a2p) + pow2(b2));
+  const Cbp = (C1p + C2p) / 2;
+
+  let h1p = rad2deg(Math.atan2(b1, a1p));
+  if (h1p < 0) h1p += 360;
+
+  let h2p = rad2deg(Math.atan2(b2, a2p));
+  if (h2p < 0) h2p += 360;
+
+  const Hbp = Math.abs(h1p - h2p) > 180
+    ? (h1p + h2p + 360) / 2
+    : (h1p + h2p) / 2;
+
+  const T = 1 - 0.17 * Math.cos(deg2rad(Hbp - 30))
+    + 0.24 * Math.cos(deg2rad(2 * Hbp))
+    + 0.32 * Math.cos(deg2rad(3 * Hbp + 6))
+    - 0.20 * Math.cos(deg2rad(4 * Hbp - 63));
+
+  let dhp = h2p - h1p;
+  if (Math.abs(dhp) > 180) {
+    if (h2p <= h1p) {
+      dhp += 360;
+    } else {
+      dhp -= 360;
+    }
+  }
+
+  const dLp = L2 - L1;
+  const dCp = C2p - C1p;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(deg2rad(dhp) / 2);
+
+  const SL = 1 + ((0.015 * pow2(L1 - 50)) / Math.sqrt(20 + pow2(L1 - 50)));
+  const SC = 1 + 0.045 * Cbp;
+  const SH = 1 + 0.015 * Cbp * T;
+
+  const dTheta = 30 * Math.exp(-pow2((Hbp - 275) / 25));
+  const RC = 2 * Math.sqrt(pow2(Cbp) / (pow2(Cbp) + 25 * 25 * 25 * 25));
+  const RT = -RC * Math.sin(2 * deg2rad(dTheta));
+
+  const dE = Math.sqrt(
+    pow2(dLp / (kL * SL)) +
+    pow2(dCp / (kC * SC)) +
+    pow2(dHp / (kH * SH)) +
+    RT * (dCp / (kC * SC)) * (dHp / (kH * SH))
   );
+
+  return dE;
 }
+
 
 export interface ColorInfo {
   rgb: {
