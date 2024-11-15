@@ -152,6 +152,18 @@ export function labToHex(l: number, a: number, b: number): string {
   return rgbToHex(...rgb);
 }
 
+function pow2(n: number): number {
+  return Math.pow(n, 2);
+}
+
+function deg2rad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function rad2deg(rad: number): number {
+  return (rad * 180) / Math.PI;
+}
+
 export function getColorDistance(hex1: string, hex2: string): number {
   const normalized1 = normalizeHexColor(hex1);
   const normalized2 = normalizeHexColor(hex2);
