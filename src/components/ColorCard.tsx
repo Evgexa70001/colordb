@@ -1,4 +1,5 @@
-import { Edit, Trash2, Beaker, Users, StickyNote, UserCircle } from 'lucide-react';
+import { useState } from 'react';
+import { PieChart, Edit, Trash2, Beaker, Users, StickyNote, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { PantoneColor } from '../types';
 
@@ -12,11 +13,27 @@ interface ColorCardProps {
 
 export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }: ColorCardProps) {
   const { isDark } = useTheme();
+  const [expandedRecipes, setExpandedRecipes] = useState<number[]>([]);
 
-  const formatRecipe = (recipe: string) => {
-    const lines = recipe.split('\n');
-    const recipes: { totalAmount: number; material: string; anilox?: string; comment?: string; items: { paint: string; amount: number }[] }[] = [];
-    let currentRecipe: { totalAmount: number; material: string; anilox?: string; comment?: string; items: { paint: string; amount: number }[] } | null = null;
+  const toggleRecipe = (index: number) => {
+    setExpandedRecipes(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  const parseRecipes = (recipeString: string) => {
+    const lines = recipeString.split('\n');
+    const recipes: Array<{
+      totalAmount: number;
+      material: string;
+      anilox?: string;
+      comment?: string;
+      items: Array<{ paint: string; amount: number }>;
+    }> = [];
+    
+    let currentRecipe: typeof recipes[0] | null = null;
 
     lines.forEach(line => {
       const totalAmountMatch = line.match(/^Общее количество: (\d+)/);
@@ -26,14 +43,10 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
       const commentMatch = line.match(/^Комментарий: (.+)/);
 
       if (totalAmountMatch) {
-        if (currentRecipe) {
-          recipes.push(currentRecipe);
-        }
+        if (currentRecipe) recipes.push(currentRecipe);
         currentRecipe = {
           totalAmount: parseInt(totalAmountMatch[1]),
           material: '',
-          anilox: '',
-          comment: '',
           items: []
         };
       } else if (materialMatch && currentRecipe) {
@@ -50,45 +63,8 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
       }
     });
 
-    if (currentRecipe) {
-      recipes.push(currentRecipe);
-    }
-
-    const validRecipes = recipes.filter(recipe => 
-      recipe.material.trim() !== '' && 
-      recipe.items.length > 0 &&
-      recipe.items.some(item => item.paint.trim() !== '' && item.amount > 0)
-    );
-
-    return validRecipes.map((recipe, index) => (
-      <div key={index} className={`${index > 0 ? 'mt-3 pt-3 border-t border-blue-400/30' : ''}`}>
-        <div className={`text-xs uppercase tracking-wider mb-1 ${
-          isDark ? 'text-blue-300/70' : 'text-blue-600/70'
-        }`}>
-          Рецепт {index + 1}
-        </div>
-        <span className="block font-medium">Материал: {recipe.material}</span>
-        {recipe.anilox && (
-          <span className="block">Анилокс: {recipe.anilox}</span>
-        )}
-        {recipe.comment && (
-          <div className="block mt-1 mb-2">
-            <span className="font-medium">Комментарий:</span>
-            <p className="mt-1 text-sm italic">{recipe.comment}</p>
-          </div>
-        )}
-        {recipe.items
-          .filter(item => item.paint.trim() !== '' && item.amount > 0)
-          .map((item, itemIndex) => {
-            const percentage = (item.amount / recipe.totalAmount * 100).toFixed(1);
-            return (
-              <span key={itemIndex} className="block text-sm">
-                {item.paint} - {percentage}% ({item.amount} гр.)
-              </span>
-            );
-          })}
-      </div>
-    ));
+    if (currentRecipe) recipes.push(currentRecipe);
+    return recipes;
   };
 
   return (
@@ -112,21 +88,61 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
           </p>
         </div>
 
-        {color.recipe && formatRecipe(color.recipe).length > 0 && (
-          <div className={`p-2 sm:p-3 rounded-lg text-sm ${
-            isDark ? 'bg-blue-900/30' : 'bg-blue-50'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Beaker className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                Рецепты:
-              </p>
-            </div>
-            <div className={`text-xs sm:text-sm font-mono ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-              {formatRecipe(color.recipe)}
-            </div>
+        {color.recipe && parseRecipes(color.recipe).map((recipe, index) => (
+          <div
+            key={index}
+            className={`p-2 sm:p-3 rounded-lg ${
+              isDark ? 'bg-blue-900/30' : 'bg-blue-50'
+            }`}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleRecipe(index);
+              }}
+              className="w-full"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Beaker className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+                    Рецепт {index + 1}
+                  </p>
+                </div>
+                {expandedRecipes.includes(index) ? (
+                  <ChevronUp className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                ) : (
+                  <ChevronDown className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                )}
+              </div>
+            </button>
+
+            {expandedRecipes.includes(index) && (
+              <div className={`text-xs sm:text-sm ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                <div className="mb-3">
+                  <p className="font-medium">Материал: {recipe.material}</p>
+                  {recipe.anilox && <p>Анилокс: {recipe.anilox}</p>}
+                  {recipe.comment && (
+                    <p className="mt-1 italic text-sm">
+                      Комментарий: {recipe.comment}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {recipe.items.map((item, itemIndex) => {
+                    const percentage = (item.amount / recipe.totalAmount * 100).toFixed(1);
+                    return (
+                      <p key={itemIndex}>
+                        {item.paint} - {percentage}% ({item.amount} гр.)
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        ))}
 
         {color.customers && color.customers.length > 0 && (
           <div className={`p-2 sm:p-3 rounded-lg ${
