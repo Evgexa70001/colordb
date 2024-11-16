@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PieChart, Edit, Trash2, Beaker, Users, StickyNote, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, Trash2, Beaker, Users, StickyNote, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { PantoneColor } from '../types';
 
