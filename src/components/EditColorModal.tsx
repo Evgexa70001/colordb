@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Copy } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { normalizeHexColor } from '../utils/colorUtils';
 import { UNCATEGORIZED } from '../lib/categories';
 import type { ColorModalProps } from '../types';
+
+// Часто используемые материалы и анилоксы
+const COMMON_MATERIALS = [
+  'Пленка Белая',
+  'Бумага'
+];
+
+const COMMON_ANILOX = [
+  '800',
+  '500',
+  '350'
+];
 
 interface Recipe {
   totalAmount: number;
@@ -35,6 +47,9 @@ export default function EditColorModal({
   const [notes, setNotes] = useState(color.notes || '');
   const [manager, setManager] = useState(color.manager || '');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [showMaterialSuggestions, setShowMaterialSuggestions] = useState(false);
+  const [showAniloxSuggestions, setShowAniloxSuggestions] = useState(false);
+  const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (color.recipe) {
@@ -86,6 +101,18 @@ export default function EditColorModal({
       material: '',
       items: [{ paint: '', amount: 0 }]
     }]);
+  };
+
+  const duplicateRecipe = (index: number) => {
+    const recipeToDuplicate = recipes[index];
+    const duplicatedRecipe = {
+      ...recipeToDuplicate,
+      items: recipeToDuplicate.items.map(item => ({ ...item }))
+    };
+    
+    const newRecipes = [...recipes];
+    newRecipes.splice(index + 1, 0, duplicatedRecipe);
+    setRecipes(newRecipes);
   };
 
   const removeRecipe = (index: number) => {
@@ -173,6 +200,16 @@ export default function EditColorModal({
     });
   };
 
+  const handleMaterialSelect = (material: string, recipeIndex: number) => {
+    updateRecipe(recipeIndex, { material });
+    setShowMaterialSuggestions(false);
+  };
+
+  const handleAniloxSelect = (anilox: string, recipeIndex: number) => {
+    updateRecipe(recipeIndex, { anilox });
+    setShowAniloxSuggestions(false);
+  };
+
   const inputClasses = `mt-1 block w-full rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 ${
     isDark
       ? 'bg-gray-700 border-gray-600 text-gray-100 focus:border-blue-500'
@@ -182,6 +219,8 @@ export default function EditColorModal({
   const labelClasses = `block text-sm font-medium ${
     isDark ? 'text-gray-200' : 'text-gray-700'
   }`;
+
+  const suggestionClasses = `absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1 text-sm`;
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -327,85 +366,149 @@ export default function EditColorModal({
                       >
                         Рецепт {recipeIndex + 1}
                       </h4>
-                      <button
-                        type="button"
-                        onClick={() => removeRecipe(recipeIndex)}
-                        className={`p-1 rounded-full ${
-                          isDark
-                            ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
-                            : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => duplicateRecipe(recipeIndex)}
+                          className={`p-1 rounded-full ${
+                            isDark
+                              ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
+                              : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeRecipe(recipeIndex)}
+                          className={`p-1 rounded-full ${
+                            isDark
+                              ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
+                              : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className={`${labelClasses} text-xs`}>
-                            Общее количество (гр.)
-                          </label>
-                          <input
-                            type="number"
-                            value={recipe.totalAmount}
-                            onChange={(e) =>
-                              updateRecipe(recipeIndex, {
-                                totalAmount: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            min="0"
-                            className={inputClasses}
-                          />
-                        </div>
-                        <div>
+                        <div className="relative">
                           <label className={`${labelClasses} text-xs`}>
                             Материал
                           </label>
-                          <input
-                            type="text"
-                            value={recipe.material}
-                            onChange={(e) =>
-                              updateRecipe(recipeIndex, {
-                                material: e.target.value,
-                              })
-                            }
-                            className={inputClasses}
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={recipe.material}
+                              onChange={(e) => {
+                                updateRecipe(recipeIndex, {
+                                  material: e.target.value,
+                                });
+                                setSelectedRecipeIndex(recipeIndex);
+                                setShowMaterialSuggestions(true);
+                              }}
+                              onFocus={() => {
+                                setSelectedRecipeIndex(recipeIndex);
+                                setShowMaterialSuggestions(true);
+                              }}
+                              className={inputClasses}
+                            />
+                            {showMaterialSuggestions && selectedRecipeIndex === recipeIndex && (
+                              <div className={suggestionClasses}>
+                                {COMMON_MATERIALS.map((material) => (
+                                  <button
+                                    key={material}
+                                    type="button"
+                                    className={`block w-full text-left px-4 py-2 ${
+                                      isDark
+                                        ? 'hover:bg-gray-600 text-gray-200'
+                                        : 'hover:bg-gray-100 text-gray-700'
+                                    }`}
+                                    onClick={() => handleMaterialSelect(material, recipeIndex)}
+                                  >
+                                    {material}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div className="relative">
                           <label className={`${labelClasses} text-xs`}>
                             Анилокс
                           </label>
-                          <input
-                            type="text"
-                            value={recipe.anilox || ''}
-                            onChange={(e) =>
-                              updateRecipe(recipeIndex, {
-                                anilox: e.target.value,
-                              })
-                            }
-                            className={inputClasses}
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={recipe.anilox || ''}
+                              onChange={(e) => {
+                                updateRecipe(recipeIndex, {
+                                  anilox: e.target.value,
+                                });
+                                setSelectedRecipeIndex(recipeIndex);
+                                setShowAniloxSuggestions(true);
+                              }}
+                              onFocus={() => {
+                                setSelectedRecipeIndex(recipeIndex);
+                                setShowAniloxSuggestions(true);
+                              }}
+                              className={inputClasses}
+                            />
+                            {showAniloxSuggestions && selectedRecipeIndex === recipeIndex && (
+                              <div className={suggestionClasses}>
+                                {COMMON_ANILOX.map((anilox) => (
+                                  <button
+                                    key={anilox}
+                                    type="button"
+                                    className={`block w-full text-left px-4 py-2 ${
+                                      isDark
+                                        ? 'hover:bg-gray-600 text-gray-200'
+                                        : 'hover:bg-gray-100 text-gray-700'
+                                    }`}
+                                    onClick={() => handleAniloxSelect(anilox, recipeIndex)}
+                                  >
+                                    {anilox}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <label className={`${labelClasses} text-xs`}>
-                            Комментарий
-                          </label>
-                          <input
-                            type="text"
-                            value={recipe.comment || ''}
-                            onChange={(e) =>
-                              updateRecipe(recipeIndex, {
-                                comment: e.target.value,
-                              })
-                            }
-                            className={inputClasses}
-                          />
-                        </div>
+                      </div>
+
+                      <div>
+                        <label className={`${labelClasses} text-xs`}>
+                          Общее количество (гр.)
+                        </label>
+                        <input
+                          type="number"
+                          value={recipe.totalAmount}
+                          onChange={(e) =>
+                            updateRecipe(recipeIndex, {
+                              totalAmount: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          min="0"
+                          className={inputClasses}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`${labelClasses} text-xs`}>
+                          Комментарий
+                        </label>
+                        <input
+                          type="text"
+                          value={recipe.comment || ''}
+                          onChange={(e) =>
+                            updateRecipe(recipeIndex, {
+                              comment: e.target.value,
+                            })
+                          }
+                          className={inputClasses}
+                        />
                       </div>
 
                       <div className="space-y-2">
@@ -432,8 +535,7 @@ export default function EditColorModal({
                                       paint: e.target.value,
                                     })
                                   }
-                                  placeholder="Название краски"
-                                  className={`${inputClasses} h-12`}
+                                  className={inputClasses}
                                 />
                               </div>
                               <div className="flex items-center gap-4">
@@ -450,8 +552,7 @@ export default function EditColorModal({
                                       })
                                     }
                                     min="0"
-                                    placeholder="Количество"
-                                    className={`${inputClasses} h-12`}
+                                    className={inputClasses}
                                   />
                                 </div>
                                 <button
