@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  Download,
   Sun,
   Moon,
   Plus,
@@ -8,6 +9,7 @@ import {
   ShieldAlert,
   LogOut,
   Menu,
+  FileDown,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,11 +26,24 @@ import { getColorDistance, isValidHexColor } from '../utils/colorUtils';
 import type { PantoneColor } from '../types';
 import toast from 'react-hot-toast';
 
-type SortField = 'name' | 'inStock';
+type SortField = 'name' | 'inStock' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
 
 const SIMILAR_COLOR_THRESHOLD = 8;
 const SKELETON_COUNT = 6;
+
+const getTimestamp = (color: PantoneColor): number => {
+  if (!color.createdAt) return 0;
+  
+  // Handle Firestore Timestamp
+  if (typeof color.createdAt === 'object' && 'seconds' in color.createdAt) {
+    const timestamp = color.createdAt as { seconds: number; nanoseconds: number };
+    return timestamp.seconds * 1000;
+  }
+  
+  // Handle string date
+  return new Date(color.createdAt).getTime();
+};
 
 export default function Dashboard() {
   const { isDark, toggleTheme } = useTheme();
@@ -84,7 +99,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('sidebar');
@@ -132,14 +146,12 @@ export default function Dashboard() {
     if (!isValidHexColor(targetColor.hex)) return [];
 
     return colors
-      .filter(
-        (color) => color.id !== targetColor.id && isValidHexColor(color.hex)
-      )
-      .map((color) => {
-        const distance = getColorDistance(targetColor.hex, color.hex);
-        return { ...color, distance };
-      })
-      .filter((color) => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
+      .filter(color => color.id !== targetColor.id && isValidHexColor(color.hex))
+      .map(color => ({
+        ...color,
+        distance: getColorDistance(targetColor.hex, color.hex)
+      }))
+      .filter(color => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0))
       .slice(0, 6);
   };
@@ -230,6 +242,10 @@ export default function Dashboard() {
         return sortOrder === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
+      } else if (sortField === 'createdAt') {
+        const timeA = getTimestamp(a);
+        const timeB = getTimestamp(b);
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
       } else {
         return sortOrder === 'asc'
           ? Number(b.inStock) - Number(a.inStock)
@@ -300,15 +316,15 @@ export default function Dashboard() {
       </header>
 
       {/* Sidebar */}
-       <aside
-          id="sidebar"
-          className={`fixed left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-r ${
-            isDark ? 'border-gray-700' : 'border-gray-200'
-          } top-16 bottom-0`}
-        >
-       <div className="h-full flex flex-col">
+      <aside
+        id="sidebar"
+        className={`fixed left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-r ${
+          isDark ? 'border-gray-700' : 'border-gray-200'
+        } top-16 bottom-0`}
+      >
+        <div className="h-full flex flex-col">
           <div className="flex-1 overflow-y-auto py-4">
             <div className="px-4 mb-4">
               <input
@@ -435,7 +451,7 @@ export default function Dashboard() {
                 sortField={sortField}
                 sortOrder={sortOrder}
                 onSortChange={(field) => {
-                  handleSortChange(field);
+                  handleSortChange(field as SortField);
                   setSidebarOpen(false);
                 }}
               />
