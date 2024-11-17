@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit, Trash2, Beaker, Users, StickyNote, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, Trash2, Beaker, Users, StickyNote, UserCircle, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { PantoneColor } from '../types';
 
@@ -9,6 +9,31 @@ interface ColorCardProps {
   onClick: () => void;
   onDelete: () => void;
   isAdmin: boolean;
+}
+
+function formatDate(dateString?: string | { seconds: number; nanoseconds: number }): string {
+  if (!dateString) return '';
+  
+  // Handle Firestore Timestamp
+  if (typeof dateString === 'object' && 'seconds' in dateString) {
+    const timestamp = dateString as { seconds: number; nanoseconds: number };
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  // Handle string date
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 }
 
 export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }: ColorCardProps) {
@@ -86,6 +111,14 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
           <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {color.hex}
           </p>
+          {color.createdAt && (
+            <div className="flex items-center gap-1 mt-1">
+              <Calendar className={`w-3 h-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {formatDate(color.createdAt)}
+              </p>
+            </div>
+          )}
         </div>
 
         {color.recipe && parseRecipes(color.recipe).map((recipe, index) => (
