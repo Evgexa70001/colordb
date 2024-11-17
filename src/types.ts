@@ -16,6 +16,7 @@ export interface PantoneColor {
   inStock: boolean;
   notes?: string;
   manager?: string;
+  createdAt?: string | { seconds: number; nanoseconds: number };
 }
 
 // Modal Props
