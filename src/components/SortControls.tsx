@@ -1,7 +1,7 @@
 import { ArrowUpDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-type SortField = 'name' | 'inStock';
+type SortField = 'name' | 'inStock' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
 
 interface SortControlsProps {
@@ -47,6 +47,23 @@ export default function SortControls({ sortField, sortOrder, onSortChange }: Sor
         <span>По наличию</span>
         <ArrowUpDown className={`w-4 h-4 ${
           sortField === 'inStock' && sortOrder === 'desc' ? 'rotate-180' : ''
+        }`} />
+      </button>
+      <button
+        onClick={() => onSortChange('createdAt')}
+        className={`px-3 py-2 rounded-md flex items-center justify-between text-sm ${
+          sortField === 'createdAt'
+            ? isDark
+              ? 'bg-blue-900 text-blue-100'
+              : 'bg-blue-100 text-blue-700'
+            : isDark
+              ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <span>По дате создания</span>
+        <ArrowUpDown className={`w-4 h-4 ${
+          sortField === 'createdAt' && sortOrder === 'desc' ? 'rotate-180' : ''
         }`} />
       </button>
     </div>
