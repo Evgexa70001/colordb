@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Download,
   Sun,
   Moon,
   Plus,
@@ -9,7 +8,6 @@ import {
   ShieldAlert,
   LogOut,
   Menu,
-  FileDown,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
