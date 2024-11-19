@@ -487,7 +487,7 @@ export default function EditColorModal({
                           value={recipe.totalAmount}
                           onChange={(e) =>
                             updateRecipe(recipeIndex, {
-                              totalAmount: parseInt(e.target.value) || 0,
+                              totalAmount: parseInt(e.target.value),
                             })
                           }
                           min="0"
@@ -548,7 +548,7 @@ export default function EditColorModal({
                                     value={item.amount}
                                     onChange={(e) =>
                                       updateRecipeItem(recipeIndex, itemIndex, {
-                                        amount: parseInt(e.target.value) || 0,
+                                        amount: parseInt(e.target.value),
                                       })
                                     }
                                     min="0"
