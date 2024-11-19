@@ -470,7 +470,7 @@ export default function NewColorModal({
                           Общее количество (гр.)
                         </label>
                         <input
-                          type="number"
+                          type="text"
                           value={recipe.totalAmount}
                           onChange={(e) =>
                             updateRecipe(recipeIndex, {
