@@ -535,7 +535,7 @@ export default function NewColorModal({
                                     value={item.amount}
                                     onChange={(e) =>
                                       updateRecipeItem(recipeIndex, itemIndex, {
-                                        amount: parseInt(e.target.value) || ``,
+                                        amount: parseInt(e.target.value) || null`,
                                       })
                                     }
                                     min="0"
