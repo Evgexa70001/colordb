@@ -470,11 +470,11 @@ export default function NewColorModal({
                           Общее количество (гр.)
                         </label>
                         <input
-                          type="text"
+                          type="number"
                           value={recipe.totalAmount}
                           onChange={(e) =>
                             updateRecipe(recipeIndex, {
-                              totalAmount: parseInt(e.target.value) || 0,
+                              totalAmount: parseInt(e.target.value),
                             })
                           }
                           min="0"
