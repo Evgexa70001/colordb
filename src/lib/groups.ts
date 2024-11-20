@@ -12,7 +12,7 @@ import {
 import { db } from './firebase';
 import { updateColor, getColors } from './colors';
 
-export const UNCATEGORIZEDS = 'Uncategorized';
+export const UNCATEGORIZEDS = 'Без группы';
 
 export async function getGroups(): Promise<string[]> {
   try {
