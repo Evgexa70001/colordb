@@ -4,21 +4,15 @@ import { Plus, X, Search } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { normalizeHexColor } from '../utils/colorUtils';
 import { UNCATEGORIZED } from '../lib/categories';
+import { UNCATEGORIZEDS } from '../lib/groups';
 import { colorSourceManager } from '../lib/colorSources/colorSourceManager';
 import toast from 'react-hot-toast';
 import type { NewColorModalProps } from '../types';
 
 // Часто используемые материалы и анилоксы
-const COMMON_MATERIALS = [
-  'Пленка Белая',
-  'Бумага'
-];
+const COMMON_MATERIALS = ['Пленка Белая', 'Бумага'];
 
-const COMMON_ANILOX = [
-  '800',
-  '500',
-  '350'
-];
+const COMMON_ANILOX = ['800', '500', '350'];
 
 interface Recipe {
   totalAmount: number;
@@ -36,6 +30,7 @@ export default function NewColorModal({
   onClose,
   onSave,
   categories,
+  groups,
 }: NewColorModalProps) {
   const { isDark } = useTheme();
   const [name, setName] = useState('');
@@ -43,6 +38,7 @@ export default function NewColorModal({
   const [customers, setCustomers] = useState('');
   const [inStock, setInStock] = useState(true);
   const [category, setCategory] = useState('');
+  const [group, setGroup] = useState('');
   const [notes, setNotes] = useState('');
   const [manager, setManager] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -57,6 +53,7 @@ export default function NewColorModal({
     setCustomers('');
     setInStock(true);
     setCategory('');
+    setGroup('');
     setNotes('');
     setManager('');
     setRecipes([]);
@@ -85,11 +82,14 @@ export default function NewColorModal({
   };
 
   const addRecipe = () => {
-    setRecipes([...recipes, {
-      totalAmount: 0,
-      material: '',
-      items: [{ paint: '', amount: 0 }]
-    }]);
+    setRecipes([
+      ...recipes,
+      {
+        totalAmount: 0,
+        material: '',
+        items: [{ paint: '', amount: 0 }],
+      },
+    ]);
   };
 
   const removeRecipe = (index: number) => {
@@ -97,38 +97,46 @@ export default function NewColorModal({
   };
 
   const updateRecipe = (index: number, updates: Partial<Recipe>) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === index ? { ...recipe, ...updates } : recipe
-    ));
+    setRecipes(recipes.map((recipe, i) => (i === index ? { ...recipe, ...updates } : recipe)));
   };
 
   const addRecipeItem = (recipeIndex: number) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? { ...recipe, items: [...recipe.items, { paint: '', amount: 0 }] }
-        : recipe
-    ));
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? { ...recipe, items: [...recipe.items, { paint: '', amount: 0 }] }
+          : recipe,
+      ),
+    );
   };
 
   const removeRecipeItem = (recipeIndex: number, itemIndex: number) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? { ...recipe, items: recipe.items.filter((_, j) => j !== itemIndex) }
-        : recipe
-    ));
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? { ...recipe, items: recipe.items.filter((_, j) => j !== itemIndex) }
+          : recipe,
+      ),
+    );
   };
 
-  const updateRecipeItem = (recipeIndex: number, itemIndex: number, updates: Partial<{ paint: string; amount: number }>) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? {
-            ...recipe,
-            items: recipe.items.map((item, j) => 
-              j === itemIndex ? { ...item, ...updates } : item
-            )
-          }
-        : recipe
-    ));
+  const updateRecipeItem = (
+    recipeIndex: number,
+    itemIndex: number,
+    updates: Partial<{ paint: string; amount: number }>,
+  ) => {
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? {
+              ...recipe,
+              items: recipe.items.map((item, j) =>
+                j === itemIndex ? { ...item, ...updates } : item,
+              ),
+            }
+          : recipe,
+      ),
+    );
   };
 
   const handleMaterialSelect = (material: string, recipeIndex: number) => {
@@ -148,10 +156,7 @@ export default function NewColorModal({
 
     const recipeString = recipes
       .map((recipe) => {
-        const lines = [
-          `Общее количество: ${recipe.totalAmount}`,
-          `Материал: ${recipe.material}`,
-        ];
+        const lines = [`Общее количество: ${recipe.totalAmount}`, `Материал: ${recipe.material}`];
 
         if (recipe.anilox) {
           lines.push(`Анилокс: ${recipe.anilox}`);
@@ -175,6 +180,7 @@ export default function NewColorModal({
       name: name.trim(),
       hex: finalHex,
       category: category || UNCATEGORIZED,
+      group: group || UNCATEGORIZEDS,
       recipe: recipeString || undefined,
       customers: customers
         .split(',')
@@ -194,9 +200,7 @@ export default function NewColorModal({
       : 'border-gray-300 focus:border-blue-500'
   }`;
 
-  const labelClasses = `block text-sm font-medium ${
-    isDark ? 'text-gray-200' : 'text-gray-700'
-  }`;
+  const labelClasses = `block text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`;
 
   const suggestionClasses = `absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1 text-sm`;
 
@@ -207,14 +211,10 @@ export default function NewColorModal({
         <Dialog.Panel
           className={`mx-auto max-w-4xl w-full rounded-lg p-6 ${
             isDark ? 'bg-gray-800' : 'bg-white'
-          } max-h-[90vh] overflow-y-auto custom-scrollbar`}
-        >
+          } max-h-[90vh] overflow-y-auto custom-scrollbar`}>
           <div className="flex justify-between items-start mb-6">
             <Dialog.Title
-              className={`text-lg font-medium ${
-                isDark ? 'text-gray-100' : 'text-gray-900'
-              }`}
-            >
+              className={`text-lg font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
               Добавить новый цвет
             </Dialog.Title>
             <button
@@ -223,8 +223,7 @@ export default function NewColorModal({
                 isDark
                   ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-300'
                   : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              }`}
-            >
+              }`}>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -254,18 +253,13 @@ export default function NewColorModal({
                       isDark
                         ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    } disabled:opacity-50`}
-                  >
-                    {isSearching ? (
-                      'Поиск...'
-                    ) : (
-                      <Search className="w-5 h-5" />
-                    )}
+                    } disabled:opacity-50`}>
+                    {isSearching ? 'Поиск...' : <Search className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex gap-4 items-end">
               <div className="flex-1">
                 <label htmlFor="hex" className={labelClasses}>
@@ -281,11 +275,11 @@ export default function NewColorModal({
                   className={inputClasses}
                 />
               </div>
-              <div 
+              <div
                 className="w-10 h-10 rounded-md border shadow-sm flex-shrink-0"
-                style={{ 
+                style={{
                   backgroundColor: normalizeHexColor(hex),
-                  borderColor: isDark ? 'rgba(75, 85, 99, 0.6)' : 'rgba(209, 213, 219, 1)'
+                  borderColor: isDark ? 'rgba(75, 85, 99, 0.6)' : 'rgba(209, 213, 219, 1)',
                 }}
               />
             </div>
@@ -298,12 +292,29 @@ export default function NewColorModal({
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className={inputClasses}
-              >
+                className={inputClasses}>
                 <option value="">Без категории</option>
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="group" className={labelClasses}>
+                Группа
+              </label>
+              <select
+                id="group"
+                value={group}
+                onChange={(e) => setGroup(e.target.value)}
+                className={inputClasses}>
+                <option value="">Без группы</option>
+                {groups.map((gr) => (
+                  <option key={gr} value={gr}>
+                    {gr}
                   </option>
                 ))}
               </select>
@@ -354,16 +365,9 @@ export default function NewColorModal({
                 {recipes.map((recipe, recipeIndex) => (
                   <div
                     key={recipeIndex}
-                    className={`p-4 rounded-lg ${
-                      isDark ? 'bg-gray-700' : 'bg-gray-100'
-                    }`}
-                  >
+                    className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <div className="flex justify-between items-start mb-4">
-                      <h4
-                        className={`font-medium ${
-                          isDark ? 'text-gray-200' : 'text-gray-700'
-                        }`}
-                      >
+                      <h4 className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                         Рецепт {recipeIndex + 1}
                       </h4>
                       <button
@@ -373,8 +377,7 @@ export default function NewColorModal({
                           isDark
                             ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
                             : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
+                        }`}>
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -382,9 +385,7 @@ export default function NewColorModal({
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="relative">
-                          <label className={`${labelClasses} text-xs`}>
-                            Материал
-                          </label>
+                          <label className={`${labelClasses} text-xs`}>Материал</label>
                           <div className="relative">
                             <input
                               type="text"
@@ -413,8 +414,7 @@ export default function NewColorModal({
                                         ? 'hover:bg-gray-600 text-gray-200'
                                         : 'hover:bg-gray-100 text-gray-700'
                                     }`}
-                                    onClick={() => handleMaterialSelect(material, recipeIndex)}
-                                  >
+                                    onClick={() => handleMaterialSelect(material, recipeIndex)}>
                                     {material}
                                   </button>
                                 ))}
@@ -423,9 +423,7 @@ export default function NewColorModal({
                           </div>
                         </div>
                         <div className="relative">
-                          <label className={`${labelClasses} text-xs`}>
-                            Анилокс
-                          </label>
+                          <label className={`${labelClasses} text-xs`}>Анилокс</label>
                           <div className="relative">
                             <input
                               type="text"
@@ -454,8 +452,7 @@ export default function NewColorModal({
                                         ? 'hover:bg-gray-600 text-gray-200'
                                         : 'hover:bg-gray-100 text-gray-700'
                                     }`}
-                                    onClick={() => handleAniloxSelect(anilox, recipeIndex)}
-                                  >
+                                    onClick={() => handleAniloxSelect(anilox, recipeIndex)}>
                                     {anilox}
                                   </button>
                                 ))}
@@ -466,9 +463,7 @@ export default function NewColorModal({
                       </div>
 
                       <div>
-                        <label className={`${labelClasses} text-xs`}>
-                          Общее количество (гр.)
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Общее количество (гр.)</label>
                         <input
                           type="number"
                           value={recipe.totalAmount}
@@ -483,9 +478,7 @@ export default function NewColorModal({
                       </div>
 
                       <div>
-                        <label className={`${labelClasses} text-xs`}>
-                          Комментарий
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Комментарий</label>
                         <input
                           type="text"
                           value={recipe.comment || ''}
@@ -499,21 +492,14 @@ export default function NewColorModal({
                       </div>
 
                       <div className="space-y-2">
-                        <label className={`${labelClasses} text-xs`}>
-                          Компоненты
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Компоненты</label>
                         {recipe.items.map((item, itemIndex) => (
                           <div
                             key={itemIndex}
-                            className={`p-4 rounded-lg ${
-                              isDark ? 'bg-gray-600' : 'bg-gray-200'
-                            }`}
-                          >
+                            className={`p-4 rounded-lg ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
                             <div className="grid grid-cols-1 gap-4">
                               <div>
-                                <label className={`${labelClasses} text-xs`}>
-                                  Название краски
-                                </label>
+                                <label className={`${labelClasses} text-xs`}>Название краски</label>
                                 <input
                                   type="text"
                                   value={item.paint}
@@ -544,15 +530,12 @@ export default function NewColorModal({
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    removeRecipeItem(recipeIndex, itemIndex)
-                                  }
+                                  onClick={() => removeRecipeItem(recipeIndex, itemIndex)}
                                   className={`self-end p-3 rounded-md ${
                                     isDark
                                       ? 'hover:bg-gray-500 text-gray-400 hover:text-gray-300'
                                       : 'hover:bg-gray-300 text-gray-500 hover:text-gray-700'
-                                  }`}
-                                >
+                                  }`}>
                                   <X className="w-5 h-5" />
                                 </button>
                               </div>
@@ -566,8 +549,7 @@ export default function NewColorModal({
                             isDark
                               ? 'bg-gray-600 text-gray-200 hover:bg-gray-500'
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
+                          }`}>
                           <Plus className="w-4 h-4" />
                           <span>Добавить компонент</span>
                         </button>
@@ -582,8 +564,7 @@ export default function NewColorModal({
                     isDark
                       ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
+                  }`}>
                   <Plus className="w-4 h-4" />
                   <span>Добавить рецепт</span>
                 </button>
@@ -596,14 +577,9 @@ export default function NewColorModal({
                 id="inStock"
                 checked={inStock}
                 onChange={(e) => setInStock(e.target.checked)}
-                className={`rounded ${
-                  isDark ? 'bg-gray-700 border-gray-600' : 'border-gray-300'
-                }`}
+                className={`rounded ${isDark ? 'bg-gray-700 border-gray-600' : 'border-gray-300'}`}
               />
-              <label
-                htmlFor="inStock"
-                className={`ml-2 ${labelClasses}`}
-              >
+              <label htmlFor="inStock" className={`ml-2 ${labelClasses}`}>
                 В наличии
               </label>
             </div>
@@ -616,14 +592,12 @@ export default function NewColorModal({
                   isDark
                     ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
+                }`}>
                 Отмена
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                 Сохранить
               </button>
             </div>
