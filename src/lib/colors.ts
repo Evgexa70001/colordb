@@ -1,4 +1,4 @@
-import { 
+import {
   collection,
   getDocs,
   addDoc,
@@ -10,7 +10,7 @@ import {
   FirestoreError,
   writeBatch,
   enableNetwork,
-  disableNetwork
+  disableNetwork,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { PantoneColor } from '../types';
@@ -37,15 +37,20 @@ export async function getColors(): Promise<PantoneColor[]> {
     const colorsRef = collection(db, 'colors');
     const snapshot = await getDocs(colorsRef);
     return snapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as PantoneColor))
+      .map(
+        (doc) =>
+          ({
+            id: doc.id,
+            ...doc.data(),
+          } as PantoneColor),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     const firestoreError = error as FirestoreError;
     if (firestoreError.code === 'failed-precondition' || firestoreError.code === 'unavailable') {
-      toast.error('Работаем в офлайн режиме. Изменения будут синхронизированы при восстановлении соединения.');
+      toast.error(
+        'Работаем в офлайн режиме. Изменения будут синхронизированы при восстановлении соединения.',
+      );
       return [];
     }
     throw new Error(`Failed to fetch colors: ${firestoreError.message}`);
@@ -62,10 +67,11 @@ export async function saveColor(color: Omit<PantoneColor, 'id'>): Promise<Docume
       customers: color.customers || [],
       inStock: color.inStock ?? true,
       category: color.category || 'Uncategorized',
+      group: color.group || 'Uncategorized',
       notes: color.notes || '',
       manager: color.manager || '',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
     return docRef;
   } catch (error) {
@@ -87,10 +93,11 @@ export async function updateColor(color: PantoneColor): Promise<void> {
       recipe: color.recipe || '',
       customers: color.customers || [],
       category: color.category || 'Uncategorized',
+      group: color.group || 'Uncategorized',
       inStock: color.inStock,
       notes: color.notes || '',
       manager: color.manager || '',
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
     await updateDoc(colorRef, updateData);
   } catch (error) {
@@ -124,7 +131,7 @@ export async function deleteColorsWithoutRecipes(): Promise<number> {
     const batch = writeBatch(db);
     let deletedCount = 0;
 
-    snapshot.docs.forEach(doc => {
+    snapshot.docs.forEach((doc) => {
       const color = doc.data();
       if (!color.recipe || color.recipe.trim() === '') {
         batch.delete(doc.ref);
