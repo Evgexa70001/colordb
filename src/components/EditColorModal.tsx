@@ -46,6 +46,15 @@ export default function EditColorModal({
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    setName(color.name);
+    setHex(color.hex);
+    setCustomers(color.customers?.join(', ') || '');
+    setInStock(color.inStock);
+    setCategory(color.category === UNCATEGORIZED ? '' : color.category);
+    setGroup(color.group === UNCATEGORIZEDS ? '' : color.group);
+    setNotes(color.notes || '');
+    setManager(color.manager || '');
+    
     if (color.recipe) {
       const lines = color.recipe.split('\n');
       const parsedRecipes: Recipe[] = [];
@@ -87,7 +96,7 @@ export default function EditColorModal({
 
       setRecipes(parsedRecipes);
     }
-  }, [color.recipe]);
+  }, [color]);
 
   const addRecipe = () => {
     setRecipes([
