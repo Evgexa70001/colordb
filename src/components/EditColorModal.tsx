@@ -4,19 +4,13 @@ import { Plus, X, Copy } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { normalizeHexColor } from '../utils/colorUtils';
 import { UNCATEGORIZED } from '../lib/categories';
+import { UNCATEGORIZEDS } from '../lib/groups';
 import type { ColorModalProps } from '../types';
 
 // Часто используемые материалы и анилоксы
-const COMMON_MATERIALS = [
-  'Пленка Белая',
-  'Бумага'
-];
+const COMMON_MATERIALS = ['Пленка Белая', 'Бумага'];
 
-const COMMON_ANILOX = [
-  '800',
-  '500',
-  '350'
-];
+const COMMON_ANILOX = ['800', '500', '350'];
 
 interface Recipe {
   totalAmount: number;
@@ -35,15 +29,15 @@ export default function EditColorModal({
   onClose,
   onSave,
   categories,
+  groups,
 }: ColorModalProps) {
   const { isDark } = useTheme();
   const [name, setName] = useState(color.name);
   const [hex, setHex] = useState(color.hex);
   const [customers, setCustomers] = useState(color.customers?.join(', ') || '');
   const [inStock, setInStock] = useState(color.inStock);
-  const [category, setCategory] = useState(
-    color.category === UNCATEGORIZED ? '' : color.category
-  );
+  const [category, setCategory] = useState(color.category === UNCATEGORIZED ? '' : color.category);
+  const [group, setGroup] = useState(color.group === UNCATEGORIZEDS ? '' : color.group);
   const [notes, setNotes] = useState(color.notes || '');
   const [manager, setManager] = useState(color.manager || '');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -57,7 +51,7 @@ export default function EditColorModal({
       const parsedRecipes: Recipe[] = [];
       let currentRecipe: Recipe | null = null;
 
-      lines.forEach(line => {
+      lines.forEach((line) => {
         const totalAmountMatch = line.match(/^Общее количество: (\d+)/);
         const materialMatch = line.match(/^Материал: (.+)/);
         const aniloxMatch = line.match(/^Анилокс: (.+)/);
@@ -71,7 +65,7 @@ export default function EditColorModal({
           currentRecipe = {
             totalAmount: parseInt(totalAmountMatch[1]),
             material: '',
-            items: []
+            items: [],
           };
         } else if (materialMatch && currentRecipe) {
           currentRecipe.material = materialMatch[1];
@@ -82,7 +76,7 @@ export default function EditColorModal({
         } else if (paintMatch && currentRecipe) {
           currentRecipe.items.push({
             paint: paintMatch[1],
-            amount: parseInt(paintMatch[2])
+            amount: parseInt(paintMatch[2]),
           });
         }
       });
@@ -96,20 +90,23 @@ export default function EditColorModal({
   }, [color.recipe]);
 
   const addRecipe = () => {
-    setRecipes([...recipes, {
-      totalAmount: 0,
-      material: '',
-      items: [{ paint: '', amount: 0 }]
-    }]);
+    setRecipes([
+      ...recipes,
+      {
+        totalAmount: 0,
+        material: '',
+        items: [{ paint: '', amount: 0 }],
+      },
+    ]);
   };
 
   const duplicateRecipe = (index: number) => {
     const recipeToDuplicate = recipes[index];
     const duplicatedRecipe = {
       ...recipeToDuplicate,
-      items: recipeToDuplicate.items.map(item => ({ ...item }))
+      items: recipeToDuplicate.items.map((item) => ({ ...item })),
     };
-    
+
     const newRecipes = [...recipes];
     newRecipes.splice(index + 1, 0, duplicatedRecipe);
     setRecipes(newRecipes);
@@ -120,38 +117,46 @@ export default function EditColorModal({
   };
 
   const updateRecipe = (index: number, updates: Partial<Recipe>) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === index ? { ...recipe, ...updates } : recipe
-    ));
+    setRecipes(recipes.map((recipe, i) => (i === index ? { ...recipe, ...updates } : recipe)));
   };
 
   const addRecipeItem = (recipeIndex: number) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? { ...recipe, items: [...recipe.items, { paint: '', amount: 0 }] }
-        : recipe
-    ));
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? { ...recipe, items: [...recipe.items, { paint: '', amount: 0 }] }
+          : recipe,
+      ),
+    );
   };
 
   const removeRecipeItem = (recipeIndex: number, itemIndex: number) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? { ...recipe, items: recipe.items.filter((_, j) => j !== itemIndex) }
-        : recipe
-    ));
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? { ...recipe, items: recipe.items.filter((_, j) => j !== itemIndex) }
+          : recipe,
+      ),
+    );
   };
 
-  const updateRecipeItem = (recipeIndex: number, itemIndex: number, updates: Partial<{ paint: string; amount: number }>) => {
-    setRecipes(recipes.map((recipe, i) => 
-      i === recipeIndex 
-        ? {
-            ...recipe,
-            items: recipe.items.map((item, j) => 
-              j === itemIndex ? { ...item, ...updates } : item
-            )
-          }
-        : recipe
-    ));
+  const updateRecipeItem = (
+    recipeIndex: number,
+    itemIndex: number,
+    updates: Partial<{ paint: string; amount: number }>,
+  ) => {
+    setRecipes(
+      recipes.map((recipe, i) =>
+        i === recipeIndex
+          ? {
+              ...recipe,
+              items: recipe.items.map((item, j) =>
+                j === itemIndex ? { ...item, ...updates } : item,
+              ),
+            }
+          : recipe,
+      ),
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,10 +166,7 @@ export default function EditColorModal({
 
     const recipeString = recipes
       .map((recipe) => {
-        const lines = [
-          `Общее количество: ${recipe.totalAmount}`,
-          `Материал: ${recipe.material}`,
-        ];
+        const lines = [`Общее количество: ${recipe.totalAmount}`, `Материал: ${recipe.material}`];
 
         if (recipe.anilox) {
           lines.push(`Анилокс: ${recipe.anilox}`);
@@ -190,6 +192,7 @@ export default function EditColorModal({
       hex: finalHex,
       recipe: recipeString || undefined,
       category: category || UNCATEGORIZED,
+      group: group || UNCATEGORIZEDS,
       customers: customers
         .split(',')
         .map((c) => c.trim())
@@ -216,9 +219,7 @@ export default function EditColorModal({
       : 'border-gray-300 focus:border-blue-500'
   }`;
 
-  const labelClasses = `block text-sm font-medium ${
-    isDark ? 'text-gray-200' : 'text-gray-700'
-  }`;
+  const labelClasses = `block text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`;
 
   const suggestionClasses = `absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1 text-sm`;
 
@@ -229,14 +230,10 @@ export default function EditColorModal({
         <Dialog.Panel
           className={`mx-auto max-w-4xl w-full rounded-lg p-6 ${
             isDark ? 'bg-gray-800' : 'bg-white'
-          } max-h-[90vh] overflow-y-auto custom-scrollbar`}
-        >
+          } max-h-[90vh] overflow-y-auto custom-scrollbar`}>
           <div className="flex justify-between items-start mb-6">
             <Dialog.Title
-              className={`text-lg font-medium ${
-                isDark ? 'text-gray-100' : 'text-gray-900'
-              }`}
-            >
+              className={`text-lg font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
               Редактировать цвет
             </Dialog.Title>
             <button
@@ -245,8 +242,7 @@ export default function EditColorModal({
                 isDark
                   ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-300'
                   : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              }`}
-            >
+              }`}>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -281,11 +277,11 @@ export default function EditColorModal({
                   className={inputClasses}
                 />
               </div>
-              <div 
+              <div
                 className="w-10 h-10 rounded-md border shadow-sm flex-shrink-0"
-                style={{ 
+                style={{
                   backgroundColor: normalizeHexColor(hex),
-                  borderColor: isDark ? 'rgba(75, 85, 99, 0.6)' : 'rgba(209, 213, 219, 1)'
+                  borderColor: isDark ? 'rgba(75, 85, 99, 0.6)' : 'rgba(209, 213, 219, 1)',
                 }}
               />
             </div>
@@ -298,12 +294,29 @@ export default function EditColorModal({
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className={inputClasses}
-              >
+                className={inputClasses}>
                 <option value="">Без категории</option>
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="group" className={labelClasses}>
+                Группа
+              </label>
+              <select
+                id="group"
+                value={group}
+                onChange={(e) => setGroup(e.target.value)}
+                className={inputClasses}>
+                <option value="">Без группы</option>
+                {groups.map((gr) => (
+                  <option key={gr} value={gr}>
+                    {gr}
                   </option>
                 ))}
               </select>
@@ -354,16 +367,9 @@ export default function EditColorModal({
                 {recipes.map((recipe, recipeIndex) => (
                   <div
                     key={recipeIndex}
-                    className={`p-4 rounded-lg ${
-                      isDark ? 'bg-gray-700' : 'bg-gray-100'
-                    }`}
-                  >
+                    className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <div className="flex justify-between items-start mb-4">
-                      <h4
-                        className={`font-medium ${
-                          isDark ? 'text-gray-200' : 'text-gray-700'
-                        }`}
-                      >
+                      <h4 className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                         Рецепт {recipeIndex + 1}
                       </h4>
                       <div className="flex gap-2">
@@ -374,8 +380,7 @@ export default function EditColorModal({
                             isDark
                               ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
                               : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
-                          }`}
-                        >
+                          }`}>
                           <Copy className="w-4 h-4" />
                         </button>
                         <button
@@ -385,8 +390,7 @@ export default function EditColorModal({
                             isDark
                               ? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
                               : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
-                          }`}
-                        >
+                          }`}>
                           <X className="w-4 h-4" />
                         </button>
                       </div>
@@ -395,9 +399,7 @@ export default function EditColorModal({
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="relative">
-                          <label className={`${labelClasses} text-xs`}>
-                            Материал
-                          </label>
+                          <label className={`${labelClasses} text-xs`}>Материал</label>
                           <div className="relative">
                             <input
                               type="text"
@@ -426,8 +428,7 @@ export default function EditColorModal({
                                         ? 'hover:bg-gray-600 text-gray-200'
                                         : 'hover:bg-gray-100 text-gray-700'
                                     }`}
-                                    onClick={() => handleMaterialSelect(material, recipeIndex)}
-                                  >
+                                    onClick={() => handleMaterialSelect(material, recipeIndex)}>
                                     {material}
                                   </button>
                                 ))}
@@ -436,9 +437,7 @@ export default function EditColorModal({
                           </div>
                         </div>
                         <div className="relative">
-                          <label className={`${labelClasses} text-xs`}>
-                            Анилокс
-                          </label>
+                          <label className={`${labelClasses} text-xs`}>Анилокс</label>
                           <div className="relative">
                             <input
                               type="text"
@@ -467,8 +466,7 @@ export default function EditColorModal({
                                         ? 'hover:bg-gray-600 text-gray-200'
                                         : 'hover:bg-gray-100 text-gray-700'
                                     }`}
-                                    onClick={() => handleAniloxSelect(anilox, recipeIndex)}
-                                  >
+                                    onClick={() => handleAniloxSelect(anilox, recipeIndex)}>
                                     {anilox}
                                   </button>
                                 ))}
@@ -479,9 +477,7 @@ export default function EditColorModal({
                       </div>
 
                       <div>
-                        <label className={`${labelClasses} text-xs`}>
-                          Общее количество (гр.)
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Общее количество (гр.)</label>
                         <input
                           type="number"
                           value={recipe.totalAmount}
@@ -496,9 +492,7 @@ export default function EditColorModal({
                       </div>
 
                       <div>
-                        <label className={`${labelClasses} text-xs`}>
-                          Комментарий
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Комментарий</label>
                         <input
                           type="text"
                           value={recipe.comment || ''}
@@ -512,21 +506,14 @@ export default function EditColorModal({
                       </div>
 
                       <div className="space-y-2">
-                        <label className={`${labelClasses} text-xs`}>
-                          Компоненты
-                        </label>
+                        <label className={`${labelClasses} text-xs`}>Компоненты</label>
                         {recipe.items.map((item, itemIndex) => (
                           <div
                             key={itemIndex}
-                            className={`p-4 rounded-lg ${
-                              isDark ? 'bg-gray-600' : 'bg-gray-200'
-                            }`}
-                          >
+                            className={`p-4 rounded-lg ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
                             <div className="grid grid-cols-1 gap-4">
                               <div>
-                                <label className={`${labelClasses} text-xs`}>
-                                  Название краски
-                                </label>
+                                <label className={`${labelClasses} text-xs`}>Название краски</label>
                                 <input
                                   type="text"
                                   value={item.paint}
@@ -557,15 +544,12 @@ export default function EditColorModal({
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    removeRecipeItem(recipeIndex, itemIndex)
-                                  }
+                                  onClick={() => removeRecipeItem(recipeIndex, itemIndex)}
                                   className={`self-end p-3 rounded-md ${
                                     isDark
                                       ? 'hover:bg-gray-500 text-gray-400 hover:text-gray-300'
                                       : 'hover:bg-gray-300 text-gray-500 hover:text-gray-700'
-                                  }`}
-                                >
+                                  }`}>
                                   <X className="w-5 h-5" />
                                 </button>
                               </div>
@@ -579,8 +563,7 @@ export default function EditColorModal({
                             isDark
                               ? 'bg-gray-600 text-gray-200 hover:bg-gray-500'
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
+                          }`}>
                           <Plus className="w-4 h-4" />
                           <span>Добавить компонент</span>
                         </button>
@@ -595,8 +578,7 @@ export default function EditColorModal({
                     isDark
                       ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
+                  }`}>
                   <Plus className="w-4 h-4" />
                   <span>Добавить рецепт</span>
                 </button>
@@ -609,14 +591,9 @@ export default function EditColorModal({
                 id="inStock"
                 checked={inStock}
                 onChange={(e) => setInStock(e.target.checked)}
-                className={`rounded ${
-                  isDark ? 'bg-gray-700 border-gray-600' : 'border-gray-300'
-                }`}
+                className={`rounded ${isDark ? 'bg-gray-700 border-gray-600' : 'border-gray-300'}`}
               />
-              <label
-                htmlFor="inStock"
-                className={`ml-2 ${labelClasses}`}
-              >
+              <label htmlFor="inStock" className={`ml-2 ${labelClasses}`}>
                 В наличии
               </label>
             </div>
@@ -629,14 +606,12 @@ export default function EditColorModal({
                   isDark
                     ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
+                }`}>
                 Отмена
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                 Сохранить
               </button>
             </div>
