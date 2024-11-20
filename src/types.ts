@@ -11,6 +11,7 @@ export interface PantoneColor {
   name: string;
   hex: string;
   category: string;
+  group: string;
   recipe?: string;
   customers?: string[];
   inStock: boolean;
@@ -26,6 +27,7 @@ export interface ColorModalProps {
   onClose: () => void;
   onSave: (color: PantoneColor) => void;
   categories: string[];
+  groups: string[];
 }
 
 export interface NewColorModalProps {
@@ -33,6 +35,7 @@ export interface NewColorModalProps {
   onClose: () => void;
   onSave: (color: Omit<PantoneColor, 'id'>) => void;
   categories: string[];
+  groups: string[];
 }
 
 export interface NewCategoryModalProps {
@@ -40,6 +43,13 @@ export interface NewCategoryModalProps {
   onClose: () => void;
   onSave: (name: string) => void;
   existingCategories: string[];
+}
+
+export interface NewGroupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+  existingGroups: string[];
 }
 
 export interface ColorDetailsModalProps {
