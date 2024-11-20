@@ -1,14 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Sun,
-  Moon,
-  Plus,
-  FolderPlus,
-  Trash2,
-  ShieldAlert,
-  LogOut,
-  Menu,
-} from 'lucide-react';
+import { Sun, Moon, Plus, FolderPlus, Trash2, ShieldAlert, LogOut, Menu } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import ColorCard from './ColorCard';
@@ -17,9 +8,11 @@ import NewColorModal from './NewColorModal';
 import EditColorModal from './EditColorModal';
 import ColorDetailsModal from './ColorDetails/ColorDetailsModal';
 import NewCategoryModal from './NewCategoryModal';
+import NewGroupModal from './NewGroupModal';
 import SortControls from './SortControls';
 import { getColors, saveColor, updateColor, deleteColor, setOfflineMode } from '../lib/colors';
 import { getCategories, addCategory, deleteCategory } from '../lib/categories';
+import { getGroups, addGroup, deleteGroup } from '../lib/groups';
 import { getColorDistance, isValidHexColor } from '../utils/colorUtils';
 import type { PantoneColor } from '../types';
 import toast from 'react-hot-toast';
@@ -32,13 +25,13 @@ const SKELETON_COUNT = 6;
 
 const getTimestamp = (color: PantoneColor): number => {
   if (!color.createdAt) return 0;
-  
+
   // Handle Firestore Timestamp
   if (typeof color.createdAt === 'object' && 'seconds' in color.createdAt) {
     const timestamp = color.createdAt as { seconds: number; nanoseconds: number };
     return timestamp.seconds * 1000;
   }
-  
+
   // Handle string date
   return new Date(color.createdAt).getTime();
 };
@@ -48,13 +41,16 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [colors, setColors] = useState<PantoneColor[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<PantoneColor | null>(null);
   const [isNewColorModalOpen, setIsNewColorModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
+  const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [isLoading, setIsLoading] = useState(true);
@@ -117,12 +113,14 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [fetchedColors, fetchedCategories] = await Promise.all([
+      const [fetchedColors, fetchedCategories, fetchedGroups] = await Promise.all([
         getColors(),
         getCategories(),
+        getGroups(),
       ]);
       setColors(fetchedColors);
       setCategories(fetchedCategories);
+      setGroups(fetchedGroups);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Ошибка при загрузке данных');
@@ -140,16 +138,18 @@ export default function Dashboard() {
     }
   };
 
-  const getSimilarColors = (targetColor: PantoneColor): (PantoneColor & { distance?: number })[] => {
+  const getSimilarColors = (
+    targetColor: PantoneColor,
+  ): (PantoneColor & { distance?: number })[] => {
     if (!isValidHexColor(targetColor.hex)) return [];
 
     return colors
-      .filter(color => color.id !== targetColor.id && isValidHexColor(color.hex))
-      .map(color => ({
+      .filter((color) => color.id !== targetColor.id && isValidHexColor(color.hex))
+      .map((color) => ({
         ...color,
-        distance: getColorDistance(targetColor.hex, color.hex)
+        distance: getColorDistance(targetColor.hex, color.hex),
       }))
-      .filter(color => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
+      .filter((color) => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0))
       .slice(0, 6);
   };
@@ -221,25 +221,47 @@ export default function Dashboard() {
     }
   };
 
+  const handleAddGroup = async (groupName: string) => {
+    try {
+      await addGroup(groupName);
+      await loadData();
+      setIsNewGroupModalOpen(false);
+      toast.success('Группа успешно добавлена');
+    } catch (error) {
+      console.error('Error adding group:', error);
+      toast.error('Ошибка при добавлении группы');
+    }
+  };
+
+  const handleDeleteGroup = async (groupName: string) => {
+    try {
+      await deleteGroup(groupName);
+      await loadData();
+      if (selectedGroup === groupName) {
+        setSelectedGroup('all');
+      }
+      toast.success('Группа успешно удалена');
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast.error('Ошибка при удалении группы');
+    }
+  };
+
   const filteredColors = colors
     .filter((color) => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch =
         color.name.toLowerCase().includes(searchLower) ||
         color.hex.toLowerCase().includes(searchLower) ||
-        color.customers?.some((customer) =>
-          customer.toLowerCase().includes(searchLower)
-        ) ||
+        color.customers?.some((customer) => customer.toLowerCase().includes(searchLower)) ||
         false;
-      const matchesCategory =
-        selectedCategory === 'all' || color.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesCategory = selectedCategory === 'all' || color.category === selectedCategory;
+      const matchesGroup = selectedGroup === 'all' || color.group === selectedGroup;
+      return matchesSearch && matchesCategory && matchesGroup;
     })
     .sort((a, b) => {
       if (sortField === 'name') {
-        return sortOrder === 'asc'
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
+        return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
       } else if (sortField === 'createdAt') {
         const timeA = getTimestamp(a);
         const timeB = getTimestamp(b);
@@ -257,28 +279,21 @@ export default function Dashboard() {
       <header
         className={`fixed top-0 left-0 right-0 z-30 py-4 px-4 sm:px-6 ${
           isDark ? 'bg-gray-800' : 'bg-white'
-        } shadow-md`}
-      >
+        } shadow-md`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-300 hover:bg-gray-700"
-            >
+              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-300 hover:bg-gray-700">
               <Menu className="w-6 h-6" />
             </button>
             <h1
               className={`text-lg sm:text-xl lg:text-2xl font-bold truncate ${
                 isDark ? 'text-white' : 'text-gray-900'
-              } flex items-center gap-2`}
-            >
+              } flex items-center gap-2`}>
               Color Manager
               {user?.isAdmin && (
-                <ShieldAlert
-                  className={`w-5 h-5 ${
-                    isDark ? 'text-blue-400' : 'text-blue-600'
-                  }`}
-                />
+                <ShieldAlert className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
               )}
             </h1>
           </div>
@@ -287,16 +302,9 @@ export default function Dashboard() {
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-full ${
-                isDark
-                  ? 'hover:bg-gray-700 text-gray-300'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-            >
-              {isDark ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
+                isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+              }`}>
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
               onClick={() => signOut()}
@@ -304,8 +312,7 @@ export default function Dashboard() {
                 isDark
                   ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
+              }`}>
               <LogOut className="w-4 h-4" />
               <span>Выйти</span>
             </button>
@@ -320,8 +327,7 @@ export default function Dashboard() {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-r ${
           isDark ? 'border-gray-700' : 'border-gray-200'
-        } top-16 bottom-0`}
-      >
+        } top-16 bottom-0`}>
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-y-auto py-4">
             <div className="px-4 mb-4">
@@ -345,8 +351,7 @@ export default function Dashboard() {
                     setIsNewColorModalOpen(true);
                     setSidebarOpen(false);
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
+                  className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                   <Plus className="w-4 h-4" />
                   <span>Добавить цвет</span>
                 </button>
@@ -359,10 +364,22 @@ export default function Dashboard() {
                     isDark
                       ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
+                  }`}>
                   <FolderPlus className="w-4 h-4" />
                   <span>Добавить категорию</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsNewGroupModalOpen(true);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2 px-4 py-2 rounded-md ${
+                    isDark
+                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}>
+                  <FolderPlus className="w-4 h-4" />
+                  <span>Добавить группу</span>
                 </button>
               </div>
             )}
@@ -371,8 +388,7 @@ export default function Dashboard() {
               <h2
                 className={`text-sm font-semibold mb-2 ${
                   isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
+                }`}>
                 Категории
               </h2>
               <div className="space-y-1">
@@ -389,8 +405,7 @@ export default function Dashboard() {
                       : isDark
                       ? 'text-gray-300 hover:bg-gray-700'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
+                  }`}>
                   Все категории
                 </button>
                 {categories.map((category) => (
@@ -408,23 +423,78 @@ export default function Dashboard() {
                           : isDark
                           ? 'text-gray-300 hover:bg-gray-700'
                           : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
+                      }`}>
                       {category}
                     </button>
                     {user?.isAdmin && selectedCategory === category && (
                       <button
                         onClick={() => {
-                          if (
-                            confirm(
-                              `Вы точно хотите удалить категорию "${category}"?`
-                            )
-                          ) {
+                          if (confirm(`Вы точно хотите удалить категорию "${category}"?`)) {
                             handleDeleteCategory(category);
                           }
                         }}
-                        className="p-2"
-                      >
+                        className="p-2">
+                        <Trash2
+                          className={`w-4 h-4 ${
+                            isDark ? 'text-red-400' : 'text-red-500'
+                          } hover:text-red-600`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-4">
+              <h2
+                className={`text-sm font-semibold mb-2 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                Группы
+              </h2>
+              <div className="space-y-1">
+                <button
+                  onClick={() => {
+                    setSelectedGroup('all');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm ${
+                    selectedGroup === 'all'
+                      ? isDark
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 text-gray-900'
+                      : isDark
+                      ? 'text-gray-300 hover:bg-gray-700'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}>
+                  Все группы
+                </button>
+                {groups.map((group) => (
+                  <div key={group} className="flex items-center">
+                    <button
+                      onClick={() => {
+                        setSelectedGroup(group);
+                        setSidebarOpen(false);
+                      }}
+                      className={`flex-1 text-left px-3 py-2 rounded-md text-sm ${
+                        selectedGroup === group
+                          ? isDark
+                            ? 'bg-gray-700 text-white'
+                            : 'bg-gray-200 text-gray-900'
+                          : isDark
+                          ? 'text-gray-300 hover:bg-gray-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}>
+                      {group}
+                    </button>
+                    {user?.isAdmin && selectedGroup === group && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Вы точно хотите удалить группу "${group}"?`)) {
+                            handleDeleteGroup(group);
+                          }
+                        }}
+                        className="p-2">
                         <Trash2
                           className={`w-4 h-4 ${
                             isDark ? 'text-red-400' : 'text-red-500'
@@ -441,8 +511,7 @@ export default function Dashboard() {
               <h2
                 className={`text-sm font-semibold mb-2 ${
                   isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
+                }`}>
                 Сортировка
               </h2>
               <SortControls
@@ -462,8 +531,7 @@ export default function Dashboard() {
               isDark
                 ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
+            }`}>
             <LogOut className="w-4 h-4" />
             <span>Выйти</span>
           </button>
@@ -490,8 +558,7 @@ export default function Dashboard() {
               <div
                 className={`col-span-full text-center py-12 ${
                   isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
+                }`}>
                 <p className="text-lg">Ничего не найдено</p>
               </div>
             ) : (
@@ -510,10 +577,7 @@ export default function Dashboard() {
                     setIsDetailsModalOpen(true);
                   }}
                   onDelete={() => {
-                    if (
-                      user?.isAdmin &&
-                      confirm('Вы точно хотите удалить этот цвет?')
-                    ) {
+                    if (user?.isAdmin && confirm('Вы точно хотите удалить этот цвет?')) {
                       handleDeleteColor(color.id);
                     }
                   }}
@@ -536,6 +600,7 @@ export default function Dashboard() {
             }}
             onSave={handleUpdateColor}
             categories={categories}
+            groups={groups}
           />
 
           <ColorDetailsModal
@@ -555,6 +620,7 @@ export default function Dashboard() {
         onClose={() => setIsNewColorModalOpen(false)}
         onSave={handleSaveNewColor}
         categories={categories}
+        groups={groups}
       />
 
       <NewCategoryModal
@@ -562,6 +628,12 @@ export default function Dashboard() {
         onClose={() => setIsNewCategoryModalOpen(false)}
         onSave={handleAddCategory}
         existingCategories={categories}
+      />
+      <NewGroupModal
+        isOpen={isNewGroupModalOpen}
+        onClose={() => setIsNewGroupModalOpen(false)}
+        onSave={handleAddGroup}
+        existingGroups={groups}
       />
     </div>
   );
