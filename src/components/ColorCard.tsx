@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Calendar,
+  Printer,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import type { PantoneColor } from '../types';
@@ -98,6 +99,179 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
 
     if (currentRecipe) recipes.push(currentRecipe);
     return recipes;
+  };
+
+  const handlePrint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const recipes = parseRecipes(color.recipe || '');
+
+    // Создаем содержимое для печати с таблицей
+    const printContent = `
+      <html>
+        <head>
+          <title>Рецепт ${color.name}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 20px;
+              color: #333;
+            }
+            .recipe-card {
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              margin-bottom: 20px;
+              overflow: hidden;
+            }
+            .recipe-header {
+              background-color: #f8fafc;
+              padding: 12px 16px;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            .recipe-body {
+              padding: 16px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 12px;
+            }
+            th, td {
+              padding: 8px 12px;
+              text-align: left;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            th {
+              background-color: #f8fafc;
+              font-weight: 600;
+            }
+            .info-row {
+              display: flex;
+              gap: 16px;
+              margin-bottom: 8px;
+            }
+            .info-label {
+              font-weight: 600;
+              color: #4a5568;
+            }
+            .color-preview {
+              width: 40px;
+              height: 40px;
+              border: 1px solid #e2e8f0;
+              border-radius: 4px;
+              margin-bottom: 12px;
+            }
+            @media print {
+              .recipe-card {
+                break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="color-preview" style="background-color: ${color.hex}"></div>
+          <h1>Рецепт для цвета: ${color.name}</h1>
+          <div class="info-row">
+            <span class="info-label">Код цвета:</span>
+            <span>${color.hex}</span>
+          </div>
+          ${
+            color.manager
+              ? `
+          <div class="info-row">
+            <span class="info-label">Менеджер:</span>
+            <span>${color.manager}</span>
+          </div>
+          `
+              : ''
+          }
+          ${recipes
+            .map(
+              (recipe, index) => `
+            <div class="recipe-card">
+              <div class="recipe-header">
+                <h2>Рецепт ${index + 1}</h2>
+              </div>
+              <div class="recipe-body">
+                <div class="info-row">
+                  <span class="info-label">Материал:</span>
+                  <span>${recipe.material}</span>
+                </div>
+                ${
+                  recipe.anilox
+                    ? `
+                <div class="info-row">
+                  <span class="info-label">Анилокс:</span>
+                  <span>${recipe.anilox}</span>
+                </div>
+                `
+                    : ''
+                }
+                <div class="info-row">
+                  <span class="info-label">Общее количество:</span>
+                  <span>${recipe.totalAmount} гр.</span>
+                </div>
+                ${
+                  recipe.comment
+                    ? `
+                <div class="info-row">
+                  <span class="info-label">Комментарий:</span>
+                  <span>${recipe.comment}</span>
+                </div>
+                `
+                    : ''
+                }
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Краска</th>
+                      <th>Количество (гр.)</th>
+                      <th>Процент (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${recipe.items
+                      .map((item) => {
+                        const percentage = ((item.amount / recipe.totalAmount) * 100).toFixed(1);
+                        return `
+                        <tr>
+                          <td>${item.paint}</td>
+                          <td>${item.amount}</td>
+                          <td>${percentage}%</td>
+                        </tr>
+                      `;
+                      })
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `,
+            )
+            .join('')}
+        </body>
+      </html>
+    `;
+
+    // Создаем новое окно для печати
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Даем время на загрузку стилей
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
   };
 
   return (
@@ -301,34 +475,48 @@ export default function ColorCard({ color, onEdit, onClick, onDelete, isAdmin }:
             }`}>
             {color.inStock ? 'В наличии' : 'Нет в наличии'}
           </span>
-          {isAdmin && (
-            <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {color.recipe && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
+                onClick={handlePrint}
                 className={`p-2 rounded-lg transition-all duration-200 ${
                   isDark
                     ? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'
                     : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
                 }`}>
-                <Edit className="w-4 h-4" />
+                <Printer className="w-4 h-4" />
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className={`p-2 rounded-lg transition-all duration-200 ${
-                  isDark
-                    ? 'hover:bg-red-900/30 text-red-400 hover:text-red-300'
-                    : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                }`}>
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+            )}
+
+            {isAdmin && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    isDark
+                      ? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'
+                      : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                  }`}>
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    isDark
+                      ? 'hover:bg-red-900/30 text-red-400 hover:text-red-300'
+                      : 'hover:bg-red-50 text-red-600 hover:text-red-700'
+                  }`}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
