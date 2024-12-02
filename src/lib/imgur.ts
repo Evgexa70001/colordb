@@ -1,13 +1,11 @@
 const IMGUR_CLIENT_ID = 'b4f0a3b82615df1';
 
 const getDirectImageUrl = (url: string) => {
-  const directUrl = url
-    .replace('http://', 'https://')
-    .replace('imgur.com', 'i.imgur.com')
-    .replace(/\.(jpg|jpeg|png|gif)$/, '')
-    .concat('.jpg');
+  if (url.includes('i.imgur.com')) {
+    return url.replace('http://', 'https://');
+  }
 
-  return directUrl;
+  return url.replace('http://', 'https://').replace('imgur.com', 'i.imgur.com');
 };
 
 export const uploadToImgur = async (file: File): Promise<string> => {
