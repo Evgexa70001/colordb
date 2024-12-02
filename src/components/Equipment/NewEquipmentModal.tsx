@@ -384,31 +384,6 @@ export default function NewEquipmentModal({
                           placeholder="Введите дополнительную информацию"
                         />
                       </div>
-
-                      {/* Изображение */}
-                      <div>
-                        <label
-                          className={`block text-sm font-medium mb-1 ${
-                            isDark ? 'text-gray-200' : 'text-gray-700'
-                          }`}>
-                          Изображение
-                        </label>
-                        <input
-                          type="file"
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (files && files.length > 0) {
-                              uploadImage(files[0], groupIndex, sectionIndex);
-                            }
-                          }}
-                          className={`w-full px-4 py-2 rounded-xl border ${
-                            isDark
-                              ? 'bg-gray-700 border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                          placeholder="Выберите или введите изображение"
-                        />
-                      </div>
                     </div>
                   </div>
                 ))}
