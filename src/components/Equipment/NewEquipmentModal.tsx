@@ -103,7 +103,7 @@ export default function NewEquipmentModal({
   const uploadImage = async (file: File, groupIndex: number, sectionIndex: number) => {
     try {
       // Проверка размера файла (Imgur ограничение 10MB)
-      const MAX_SIZE = 10 * 1024 * 1024; // 10MB в байтах
+      const MAX_SIZE = 10 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
         toast.error('Размер файла не должен превышать 10MB');
         return;
@@ -118,8 +118,27 @@ export default function NewEquipmentModal({
 
       toast.loading('Загрузка изображения...', { id: 'uploadImage' });
       const imageUrl = await uploadToImgur(file);
+      console.log('Uploaded image URL:', imageUrl); // Для отладки
 
-      updateSection(groupIndex, sectionIndex, { imageUrl });
+      // Обновляем состояние с новым URL изображения
+      setSectionGroups((prevGroups) =>
+        prevGroups.map((group, gIndex) =>
+          gIndex === groupIndex
+            ? {
+                ...group,
+                sections: group.sections.map((section, sIndex) =>
+                  sIndex === sectionIndex
+                    ? {
+                        ...section,
+                        imageUrl,
+                      }
+                    : section,
+                ),
+              }
+            : group,
+        ),
+      );
+
       toast.success('Изображение успешно загружено', { id: 'uploadImage' });
     } catch (error) {
       console.error('Ошибка при загрузке изображения:', error);
@@ -136,7 +155,19 @@ export default function NewEquipmentModal({
         return;
       }
 
-      const validGroups = sectionGroups.filter((group) => group.name.trim());
+      // Проверяем и подготавливаем данные перед сохранением
+      const validGroups = sectionGroups
+        .filter((group) => group.name.trim())
+        .map((group) => ({
+          ...group,
+          sections: group.sections.map((section) => ({
+            ...section,
+            // Убедимся, что URL изображения корректный
+            imageUrl: section.imageUrl ? section.imageUrl.trim() : '',
+          })),
+        }));
+
+      console.log('Saving groups:', validGroups); // Для отладки
 
       if (initialData) {
         await updateEquipment(initialData.id, {
