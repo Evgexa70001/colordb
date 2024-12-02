@@ -105,12 +105,12 @@ export interface EquipmentGroup {
   name: string;
   material: string;
   date: string;
-  imageUrl?: string;
   sections: EquipmentSection[];
 }
 
 export interface Equipment {
   id: string;
+  imageUrl?: string;
   groups: EquipmentGroup[];
   createdAt: Date;
 }

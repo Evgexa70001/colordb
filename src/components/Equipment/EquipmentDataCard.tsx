@@ -5,6 +5,7 @@ import { deleteEquipment } from '../../lib/equipment';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import ImagePreviewModal from './ImagePreviewModal';
+import EquipmentDetailsModal from './EquipmentDetailsModal';
 
 interface EquipmentDataCardProps {
   equipment: Equipment;
@@ -17,7 +18,8 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
   const firstGroup = equipment.groups[0];
   const [imageError, setImageError] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
-  const hasImage = firstGroup.imageUrl && !imageError;
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const hasImage = equipment.imageUrl && !imageError;
 
   const handleDelete = async () => {
     if (confirm('Вы уверены, что хотите удалить эти настройки?')) {
@@ -35,7 +37,8 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
   return (
     <>
       <div
-        className={`w-full h-[300px] rounded-2xl transition-all duration-200 ${
+        onClick={() => setIsDetailsModalOpen(true)}
+        className={`w-full h-[300px] rounded-2xl transition-all duration-200 cursor-pointer ${
           isDark
             ? 'bg-gray-800/50 hover:bg-gray-800 border-gray-700'
             : 'bg-white hover:bg-gray-50 border-gray-200'
@@ -46,7 +49,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
               className="w-full h-40 rounded-lg overflow-hidden cursor-pointer"
               onClick={() => setIsImagePreviewOpen(true)}>
               <img
-                src={firstGroup.imageUrl}
+                src={equipment.imageUrl}
                 alt={`Preview of ${firstGroup.name}`}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                 onError={(e) => {
@@ -117,9 +120,12 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 mt-auto">
+            <div className="flex items-center justify-end gap-2 mt-auto relative z-10">
               <button
-                onClick={onEdit}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
                 className={`p-2 rounded-xl transition-colors duration-200 ${
                   isDark
                     ? 'bg-gray-700/50 text-gray-400 hover:text-gray-200'
@@ -128,7 +134,10 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
                 <Pencil className="w-4 h-4" />
               </button>
               <button
-                onClick={handleDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
                 className={`p-2 rounded-xl transition-colors duration-200 ${
                   isDark
                     ? 'bg-red-500/10 text-red-400 hover:text-red-300'
@@ -141,11 +150,17 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
         </div>
       </div>
 
-      {firstGroup.imageUrl && (
+      <EquipmentDetailsModal
+        equipment={equipment}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+      />
+
+      {equipment.imageUrl && (
         <ImagePreviewModal
           isOpen={isImagePreviewOpen}
           onClose={() => setIsImagePreviewOpen(false)}
-          imageUrl={firstGroup.imageUrl}
+          imageUrl={equipment.imageUrl}
         />
       )}
     </>

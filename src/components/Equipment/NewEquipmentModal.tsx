@@ -1,6 +1,6 @@
 import { Dialog } from '@headlessui/react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { saveEquipment, updateEquipment } from '../../lib/equipment';
 import toast from 'react-hot-toast';
@@ -200,6 +200,30 @@ export default function NewEquipmentModal({
                   <div className={`h-px w-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} my-6`} />
                 )}
 
+                {/* Заголовок группы с кнопкой удаления */}
+                <div className="flex justify-between items-start">
+                  <label
+                    htmlFor={`name-${groupIndex}`}
+                    className={`block text-sm font-medium mb-1 ${
+                      isDark ? 'text-gray-200' : 'text-gray-700'
+                    }`}>
+                    Название
+                  </label>
+                  {groupIndex > 0 && (
+                    <button
+                      onClick={() => {
+                        setSectionGroups(sectionGroups.filter((_, index) => index !== groupIndex));
+                      }}
+                      className={`p-2 rounded-xl transition-colors duration-200 ${
+                        isDark
+                          ? 'bg-red-500/10 text-red-400 hover:text-red-300'
+                          : 'bg-red-50 text-red-500 hover:text-red-600'
+                      }`}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
                 {/* Название и материал для группы */}
                 <div>
                   <label
@@ -273,12 +297,16 @@ export default function NewEquipmentModal({
                           : 'bg-white border-gray-300 text-gray-900'
                       } focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     />
-                    {group.sections[0]?.imageUrl && (
+                    {group.imageUrl && (
                       <div className="w-20 h-20 rounded-lg overflow-hidden">
                         <img
-                          src={group.sections[0].imageUrl}
+                          src={group.imageUrl}
                           alt="Preview"
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Preview image load error:', e);
+                            e.currentTarget.src = ''; // Очищаем src при ошибке
+                          }}
                         />
                       </div>
                     )}
