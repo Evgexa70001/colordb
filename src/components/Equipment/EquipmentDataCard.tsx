@@ -17,6 +17,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
   const firstGroup = equipment.groups[0];
   const firstSectionWithImage = firstGroup.sections.find((section) => section.imageUrl);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleDelete = async () => {
     if (confirm('Вы уверены, что хотите удалить эти настройки?')) {
@@ -40,7 +41,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
             : 'bg-white hover:bg-gray-50 border-gray-200'
         } border shadow-sm hover:shadow-md p-6`}>
         <div className="h-full flex flex-col gap-4">
-          {firstSectionWithImage?.imageUrl ? (
+          {firstSectionWithImage?.imageUrl && !imageError ? (
             <div
               className="w-full h-40 rounded-lg overflow-hidden cursor-pointer"
               onClick={() => setIsImagePreviewOpen(true)}>
@@ -48,6 +49,8 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
                 src={firstSectionWithImage.imageUrl}
                 alt="Preview"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                onError={() => setImageError(true)}
+                loading="lazy"
               />
             </div>
           ) : (
