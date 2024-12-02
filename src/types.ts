@@ -99,13 +99,13 @@ export interface EquipmentSection {
   anilox: string;
   paint: string;
   additionalInfo: string;
-  imageUrl?: string;
 }
 
 export interface EquipmentGroup {
   name: string;
   material: string;
   date: string;
+  imageUrl?: string;
   sections: EquipmentSection[];
 }
 
