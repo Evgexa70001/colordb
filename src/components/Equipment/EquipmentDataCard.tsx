@@ -46,11 +46,12 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
               className="w-full h-40 rounded-lg overflow-hidden cursor-pointer"
               onClick={() => setIsImagePreviewOpen(true)}>
               <img
-                src={firstSectionWithImage.imageUrl}
+                src={firstSectionWithImage.imageUrl.replace('http://', 'https://')}
                 alt="Preview"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                 onError={() => setImageError(true)}
                 loading="lazy"
+                crossOrigin="anonymous"
               />
             </div>
           ) : (
