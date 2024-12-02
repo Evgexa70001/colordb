@@ -9,20 +9,32 @@ export const uploadToImgur = async (file: File): Promise<string> => {
       method: 'POST',
       headers: {
         Authorization: `Client-ID ${IMGUR_CLIENT_ID}`,
+        Accept: 'application/json',
       },
       body: formData,
     });
 
     if (!response.ok) {
+      console.error('Imgur response:', await response.text());
       throw new Error('Failed to upload image');
     }
 
     const data = await response.json();
+    console.log('Imgur response data:', data); // для отладки
+
     if (!data.success || !data.data?.link) {
       throw new Error('Invalid response from Imgur');
     }
 
-    const imageUrl = data.data.link.replace('http://', 'https://');
+    // Убедимся, что URL использует HTTPS и правильный домен
+    let imageUrl = data.data.link;
+    if (!imageUrl.startsWith('https://')) {
+      imageUrl = imageUrl.replace('http://', 'https://');
+    }
+    if (!imageUrl.includes('i.imgur.com')) {
+      imageUrl = imageUrl.replace('imgur.com', 'i.imgur.com');
+    }
+
     return imageUrl;
   } catch (error) {
     console.error('Error uploading to Imgur:', error);
