@@ -55,6 +55,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
                 }}
                 loading="lazy"
                 crossOrigin="anonymous"
+                referrerPolicy="origin"
               />
             </div>
           ) : (
@@ -66,46 +67,75 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
             </div>
           )}
 
-          <div className="flex-1">
-            <div className="flex justify-between items-start mb-3">
-              <h3
-                className={`font-medium text-lg ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                } truncate flex-1`}
-                title={firstGroup.name}>
-                {firstGroup.name}
-              </h3>
-              <div className="flex items-center gap-2 ml-4">
-                <button
-                  onClick={onEdit}
-                  className={`p-2 rounded-xl transition-colors duration-200 ${
-                    isDark
-                      ? 'hover:bg-gray-700/50 text-gray-400 hover:text-gray-200'
-                      : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                  }`}>
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className={`p-2 rounded-xl transition-colors duration-200 ${
-                    isDark
-                      ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
-                      : 'hover:bg-red-50 text-red-500 hover:text-red-600'
-                  }`}>
-                  <Trash2 className="w-4 h-4" />
-                </button>
+          <div className="flex-1 flex flex-col">
+            <h3
+              className={`font-medium text-lg ${isDark ? 'text-white' : 'text-gray-900'} truncate`}
+              title={firstGroup.name}>
+              {firstGroup.name}
+            </h3>
+
+            <div className={`mt-2 flex-1 space-y-1.5`}>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Материал:
+                </span>
+                <span
+                  className={`text-sm font-medium ${
+                    isDark ? 'text-gray-200' : 'text-gray-900'
+                  } truncate`}
+                  title={firstGroup.material}>
+                  {firstGroup.material}
+                </span>
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Дата:
+                </span>
+                <span
+                  className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                  {new Date(firstGroup.date).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Секции:
+                </span>
+                <span
+                  className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                  {firstGroup.sections.length}
+                </span>
+              </div>
+
+              {equipment.groups.length > 1 && (
+                <div className="mt-2">
+                  <span className="text-sm font-medium text-blue-500">
+                    +{equipment.groups.length - 1} доп. настроек
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              <p className="truncate" title={`Материал: ${firstGroup.material}`}>
-                Материал: {firstGroup.material}
-              </p>
-              <p>Дата: {new Date(firstGroup.date).toLocaleDateString()}</p>
-              <p>Количество секций: {firstGroup.sections.length}</p>
-              {equipment.groups.length > 1 && (
-                <p className="mt-2 text-blue-500">+{equipment.groups.length - 1} доп. настроек</p>
-              )}
+            <div className="flex items-center justify-end gap-2 mt-auto">
+              <button
+                onClick={onEdit}
+                className={`p-2 rounded-xl transition-colors duration-200 ${
+                  isDark
+                    ? 'bg-gray-700/50 text-gray-400 hover:text-gray-200'
+                    : 'bg-gray-100/50 text-gray-600 hover:text-gray-900'
+                }`}>
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className={`p-2 rounded-xl transition-colors duration-200 ${
+                  isDark
+                    ? 'bg-red-500/10 text-red-400 hover:text-red-300'
+                    : 'bg-red-50 text-red-500 hover:text-red-600'
+                }`}>
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
