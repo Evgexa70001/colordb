@@ -18,6 +18,7 @@ interface SectionGroup {
   name: string;
   material: string;
   date: string;
+  imageUrl?: string;
   sections: Section[];
 }
 
@@ -226,6 +227,41 @@ export default function NewEquipmentModal({
                     <option value="PE" />
                     <option value="PET" />
                   </datalist>
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-1 ${
+                      isDark ? 'text-gray-200' : 'text-gray-700'
+                    }`}>
+                    Изображение
+                  </label>
+                  <div className="flex gap-4 items-start">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          uploadImage(files[0], groupIndex, 0);
+                        }
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-xl border ${
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                    {group.sections[0]?.imageUrl && (
+                      <div className="w-20 h-20 rounded-lg overflow-hidden">
+                        <img
+                          src={group.sections[0].imageUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
