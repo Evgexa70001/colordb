@@ -338,9 +338,10 @@ export default function ColorCard({
 
   return (
     <div
-      className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-102 hover:shadow-xl ${
-        isDark ? 'bg-gray-800/90 backdrop-blur-sm' : 'bg-white/90 backdrop-blur-sm'
-      } border ${
+      className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
+      transition-all duration-500 ease-out transform hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl
+      ${isDark ? 'bg-gray-800/90 backdrop-blur-sm' : 'bg-white/90 backdrop-blur-sm'} 
+      border ${
         hasSimilarRecipes
           ? isDark
             ? 'border-rose-500/50'
@@ -348,13 +349,22 @@ export default function ColorCard({
           : isDark
           ? 'border-gray-700/50'
           : 'border-gray-200/50'
-      } ${hasSimilarRecipes ? 'border-2' : 'border'}`}
+      } ${hasSimilarRecipes ? 'border-2' : 'border'}
+      before:absolute before:inset-0 before:rounded-xl before:transition-all before:duration-500
+      before:opacity-0 group-hover:before:opacity-100
+      ${
+        isDark
+          ? 'before:bg-gradient-to-t before:from-blue-500/10 before:via-transparent before:to-transparent'
+          : 'before:bg-gradient-to-t before:from-blue-500/5 before:via-transparent before:to-transparent'
+      }
+      `}
       onClick={onClick}>
       <div
-        className="h-32 sm:h-40 relative group-hover:shadow-inner transition-all duration-300"
+        className="h-32 sm:h-40 relative transition-all duration-500 ease-out
+        group-hover:shadow-[inset_0_-20px_30px_-10px_rgba(0,0,0,0.2)]"
         style={{ backgroundColor: color.hex }}>
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/20">
-          <p className="text-white text-lg font-mono font-bold tracking-wider shadow-sm">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-black/20 backdrop-blur-[2px]">
+          <p className="text-white text-lg font-mono font-bold tracking-wider shadow-sm transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
             {color.hex}
           </p>
         </div>
@@ -406,7 +416,7 @@ export default function ColorCard({
                   e.stopPropagation();
                   toggleRecipe(index);
                 }}
-                className="w-full">
+                className="w-full relative z-10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Beaker className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -429,36 +439,45 @@ export default function ColorCard({
                 </div>
               </button>
 
-              {expandedRecipes.includes(index) && (
-                <div
-                  className={`mt-3 text-xs sm:text-sm space-y-2 ${
-                    isDark ? 'text-blue-200' : 'text-blue-800'
-                  }`}>
-                  <div className="space-y-1">
-                    <p className="font-medium">Материал: {recipe.material}</p>
-                    {recipe.anilox && <p>Анилокс: {recipe.anilox}</p>}
-                    {recipe.comment && (
-                      <p className="mt-2 italic text-sm px-3 py-2 rounded-lg bg-blue-900/20">
-                        {recipe.comment}
-                      </p>
-                    )}
-                  </div>
+              {/* Добавляем анимацию для выпадающего списка */}
+              <div
+                className={`transform transition-all duration-300 ease-out origin-top
+                ${
+                  expandedRecipes.includes(index)
+                    ? 'opacity-100 scale-y-100 translate-y-0'
+                    : 'opacity-0 scale-y-0 -translate-y-2 h-0'
+                }`}>
+                {expandedRecipes.includes(index) && (
+                  <div
+                    className={`mt-3 text-xs sm:text-sm space-y-2 ${
+                      isDark ? 'text-blue-200' : 'text-blue-800'
+                    }`}>
+                    <div className="space-y-1">
+                      <p className="font-medium">Материал: {recipe.material}</p>
+                      {recipe.anilox && <p>Анилокс: {recipe.anilox}</p>}
+                      {recipe.comment && (
+                        <p className="mt-2 italic text-sm px-3 py-2 rounded-lg bg-blue-900/20">
+                          {recipe.comment}
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="space-y-1.5 mt-3">
-                    {recipe.items.map((item, itemIndex) => {
-                      const percentage = ((item.amount / recipe.totalAmount) * 100).toFixed(1);
-                      return (
-                        <div key={itemIndex} className="flex justify-between items-center">
-                          <span>{item.paint}</span>
-                          <span className="font-medium">
-                            {percentage}% ({item.amount} гр.)
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <div className="space-y-1.5 mt-3">
+                      {recipe.items.map((item, itemIndex) => {
+                        const percentage = ((item.amount / recipe.totalAmount) * 100).toFixed(1);
+                        return (
+                          <div key={itemIndex} className="flex justify-between items-center">
+                            <span>{item.paint}</span>
+                            <span className="font-medium">
+                              {percentage}% ({item.amount} гр.)
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
 
@@ -540,7 +559,7 @@ export default function ColorCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-2 relative z-10">
           <div className="flex items-center space-x-2">
             <span
               className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
@@ -564,14 +583,17 @@ export default function ColorCard({
                   ? 'bg-red-500'
                   : 'bg-red-500'
               }`}
-              title={color.isVerified ? 'Провеен' : 'Не проверен'}
+              title={color.isVerified ? 'Проверен' : 'Не проверен'}
             />
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 relative z-20">
             {color.recipe && (
               <button
-                onClick={handlePrint}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrint(e);
+                }}
                 className={`p-2 rounded-lg transition-all duration-200 ${
                   isDark
                     ? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'

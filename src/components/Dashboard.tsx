@@ -1,16 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Sun,
-  Moon,
-  Plus,
-  FolderPlus,
-  Trash2,
-  ShieldAlert,
-  LogOut,
-  Menu,
-  ChevronDown,
-  Users,
-} from 'lucide-react';
+import { Plus, FolderPlus, Trash2, ShieldAlert, LogOut, ChevronDown, Users } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import ColorCard from './ColorCard';
@@ -25,6 +14,8 @@ import { getCategories, addCategory, deleteCategory } from '../lib/categories';
 import { getColorDistance, isValidHexColor } from '../utils/colorUtils';
 import type { PantoneColor } from '../types';
 import toast from 'react-hot-toast';
+// import { useNavigate, useLocation } from 'react-router-dom';
+import Header from './Header';
 
 type SortField = 'name' | 'inStock' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
@@ -226,7 +217,7 @@ const getSimilarColors = (
 };
 
 export default function Dashboard() {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const { user, signOut } = useAuth();
   const [colors, setColors] = useState<PantoneColor[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -248,6 +239,8 @@ export default function Dashboard() {
   const [visibleCustomersCount, setVisibleCustomersCount] = useState(INITIAL_CUSTOMERS_TO_SHOW);
   const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>('all');
   const [isVerificationDropdownOpen, setIsVerificationDropdownOpen] = useState(false);
+  // const navigate = useNavigate();
+  // const location = useLocation();
 
   useEffect(() => {
     loadData();
@@ -506,76 +499,7 @@ export default function Dashboard() {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Header */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-30 ${
-          isDark ? 'bg-gray-800/95 backdrop-blur-sm' : 'bg-white/95 backdrop-blur-sm'
-        } shadow-lg border-b ${isDark ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className={`lg:hidden p-2 rounded-xl transition-colors duration-200 ${
-                  isDark
-                    ? 'hover:bg-gray-700/50 text-gray-400 hover:text-gray-200'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}>
-                <Menu className="w-6 h-6" />
-              </button>
-
-              <div className="flex items-center gap-3">
-                <h1
-                  className={`text-lg sm:text-xl lg:text-2xl font-bold ${
-                    isDark ? 'text-white' : 'text-gray-900'
-                  } flex items-center gap-2`}>
-                  <span className="bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-                    Pantone Color Manager
-                  </span>
-                  {user?.isAdmin && (
-                    <div className="flex items-center">
-                      <ShieldAlert
-                        className={`w-5 h-5 ${
-                          isDark ? 'text-blue-400 animate-pulse' : 'text-blue-600 animate-pulse'
-                        }`}
-                      />
-                    </div>
-                  )}
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleTheme}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${
-                  isDark
-                    ? 'hover:bg-gray-700/50 text-gray-400 hover:text-gray-200'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}>
-                {isDark ? (
-                  <Sun className="w-5 h-5 transform hover:rotate-12 transition-transform duration-200" />
-                ) : (
-                  <Moon className="w-5 h-5 transform hover:-rotate-12 transition-transform duration-200" />
-                )}
-              </button>
-
-              <div className="h-6 w-px bg-gray-400/30" />
-
-              <button
-                onClick={() => signOut()}
-                className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isDark
-                    ? 'bg-gray-700/50 text-gray-200 hover:bg-gray-600'
-                    : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200'
-                }`}>
-                <LogOut className="w-4 h-4" />
-                <span>Выйти</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header onSidebarOpen={() => setSidebarOpen(true)} />
 
       {/* Sidebar */}
       <aside
@@ -682,7 +606,13 @@ export default function Dashboard() {
                   <div
                     id="category-dropdown"
                     className={`absolute z-50 w-full mt-2 py-1 rounded-xl shadow-lg border 
-                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                    transform transition-all duration-300 ease-out origin-top
+                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+                    ${
+                      isCategoryDropdownOpen
+                        ? 'opacity-100 scale-y-100 translate-y-0'
+                        : 'opacity-0 scale-y-0 -translate-y-2'
+                    }`}>
                     <button
                       onClick={() => {
                         setSelectedCategory('all');
@@ -781,7 +711,13 @@ export default function Dashboard() {
                   <div
                     id="customer-dropdown"
                     className={`absolute z-50 w-full mt-2 py-1 rounded-xl shadow-lg border 
-                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                    transform transition-all duration-300 ease-out origin-top
+                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+                    ${
+                      isCustomerDropdownOpen
+                        ? 'opacity-100 scale-y-100 translate-y-0'
+                        : 'opacity-0 scale-y-0 -translate-y-2'
+                    }`}>
                     <button
                       onClick={() => {
                         setSelectedCustomer('all');
@@ -881,7 +817,13 @@ export default function Dashboard() {
                   <div
                     id="verification-dropdown"
                     className={`absolute z-50 w-full mt-2 py-1 rounded-xl shadow-lg border 
-                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                    transform transition-all duration-300 ease-out origin-top
+                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+                    ${
+                      isVerificationDropdownOpen
+                        ? 'opacity-100 scale-y-100 translate-y-0'
+                        : 'opacity-0 scale-y-0 -translate-y-2'
+                    }`}>
                     <button
                       onClick={() => {
                         setVerificationFilter('all');

@@ -93,3 +93,24 @@ export interface ColorInfo {
     b: number;
   };
 }
+
+// Добавьте эти интерфейсы к существующим типам
+export interface EquipmentSection {
+  anilox: string;
+  paint: string;
+  additionalInfo: string;
+  imageUrl?: string;
+}
+
+export interface EquipmentGroup {
+  name: string;
+  material: string;
+  date: string;
+  sections: EquipmentSection[];
+}
+
+export interface Equipment {
+  id: string;
+  groups: EquipmentGroup[];
+  createdAt: Date;
+}
