@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Sun, Moon, LogOut, Menu, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,6 @@ interface HeaderProps {
 export default function Header({ onSidebarOpen }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
   return (
@@ -53,32 +52,28 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
               </h1>
 
               <nav className="hidden sm:flex items-center gap-4">
-                <button
-                  onClick={() => navigate('/')}
-                  className={`px-4 py-2 rounded-xl transition-all duration-200 ${
+                <Link
+                  to="/"
+                  className={`text-lg font-medium ${
                     location.pathname === '/'
-                      ? isDark
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-gray-200 text-gray-900'
+                      ? 'text-blue-500'
                       : isDark
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'text-gray-200 hover:text-white'
+                      : 'text-gray-700 hover:text-gray-900'
                   }`}>
-                  Pantone
-                </button>
-                <button
-                  onClick={() => navigate('/equipment')}
-                  className={`px-4 py-2 rounded-xl transition-all duration-200 ${
+                  Цвета
+                </Link>
+                <Link
+                  to="/equipment"
+                  className={`text-lg font-medium ${
                     location.pathname === '/equipment'
-                      ? isDark
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-gray-200 text-gray-900'
+                      ? 'text-blue-500'
                       : isDark
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'text-gray-200 hover:text-white'
+                      : 'text-gray-700 hover:text-gray-900'
                   }`}>
                   Оборудование
-                </button>
+                </Link>
               </nav>
             </div>
           </div>
