@@ -7,6 +7,7 @@ import NewEquipmentModal from './Equipment/NewEquipmentModal';
 import { getEquipment } from '../lib/equipment';
 import type { Equipment } from '../types';
 import toast from 'react-hot-toast';
+import SkeletonEquipmentCard from './Equipment/SkeletonEquipmentCard';
 
 export default function Equipment() {
   const { isDark } = useTheme();
@@ -14,12 +15,14 @@ export default function Equipment() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | undefined>(undefined);
+  const [cardCount, setCardCount] = useState(5);
 
   const loadEquipment = async () => {
     try {
       setIsLoading(true);
       const data = await getEquipment();
       setEquipment(data);
+      setCardCount(data.length);
     } catch (error) {
       console.error('Error loading equipment:', error);
       toast.error('Ошибка при загрузке данных');
@@ -54,15 +57,16 @@ export default function Equipment() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <EquipmentCard isAddCard onClick={() => setIsNewEquipmentModalOpen(true)} />
-            {!isLoading &&
-              equipment.map((item) => (
-                <EquipmentDataCard
-                  key={item.id}
-                  equipment={item}
-                  onEdit={() => handleEdit(item)}
-                  onDelete={handleDelete}
-                />
-              ))}
+            {isLoading
+              ? [...Array(cardCount)].map((_, index) => <SkeletonEquipmentCard key={index} />)
+              : equipment.map((item) => (
+                  <EquipmentDataCard
+                    key={item.id}
+                    equipment={item}
+                    onEdit={() => handleEdit(item)}
+                    onDelete={handleDelete}
+                  />
+                ))}
           </div>
         </div>
       </main>
