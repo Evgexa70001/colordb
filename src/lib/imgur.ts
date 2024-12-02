@@ -2,8 +2,8 @@ const IMGUR_CLIENT_ID = 'b4f0a3b82615df1';
 
 export const uploadToImgur = async (file: File): Promise<string> => {
   try {
-    const base64 = await convertToBase64(file);
-    const base64Data = base64.split(',')[1];
+    const formData = new FormData();
+    formData.append('image', file);
 
     const response = await fetch('https://api.imgur.com/3/image', {
       method: 'POST',
@@ -26,7 +26,8 @@ export const uploadToImgur = async (file: File): Promise<string> => {
       throw new Error('Invalid response from Imgur');
     }
 
-    return data.data.link;
+    const imageUrl = data.data.link.replace('http://', 'https://');
+    return imageUrl;
   } catch (error) {
     console.error('Error uploading to Imgur:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to upload image');
