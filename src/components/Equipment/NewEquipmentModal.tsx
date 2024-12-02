@@ -100,16 +100,14 @@ export default function NewEquipmentModal({
     );
   };
 
-  const uploadImage = async (file: File, groupIndex: number, sectionIndex: number) => {
+  const uploadImage = async (file: File, groupIndex: number) => {
     try {
-      // Проверка размера файла (Imgur ограничение 10MB)
       const MAX_SIZE = 10 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
         toast.error('Размер файла не должен превышать 10MB');
         return;
       }
 
-      // Проверка формата
       const allowedTypes = ['image/jpeg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
         toast.error('Поддерживаются только форматы JPG и PNG');
@@ -118,22 +116,14 @@ export default function NewEquipmentModal({
 
       toast.loading('Загрузка изображения...', { id: 'uploadImage' });
       const imageUrl = await uploadToImgur(file);
-      console.log('Uploaded image URL:', imageUrl); // Для отладки
+      console.log('Uploaded image URL:', imageUrl);
 
-      // Обновляем состояние с новым URL изображения
       setSectionGroups((prevGroups) =>
-        prevGroups.map((group, gIndex) =>
-          gIndex === groupIndex
+        prevGroups.map((group, index) =>
+          index === groupIndex
             ? {
                 ...group,
-                sections: group.sections.map((section, sIndex) =>
-                  sIndex === sectionIndex
-                    ? {
-                        ...section,
-                        imageUrl,
-                      }
-                    : section,
-                ),
+                imageUrl,
               }
             : group,
         ),
@@ -274,7 +264,7 @@ export default function NewEquipmentModal({
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files && files.length > 0) {
-                          uploadImage(files[0], groupIndex, 0);
+                          uploadImage(files[0], groupIndex);
                         }
                       }}
                       className={`flex-1 px-4 py-2 rounded-xl border ${
