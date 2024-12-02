@@ -1,7 +1,7 @@
 import { useTheme } from '../../contexts/ThemeContext';
 import { Pencil, Trash2, Image } from 'lucide-react';
 import type { Equipment } from '../../types';
-import { deleteEquipment } from '../../lib/equipment';
+import { deleteEquipment, updateEquipment } from '../../lib/equipment';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import ImagePreviewModal from './ImagePreviewModal';
@@ -29,6 +29,23 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
         toast.success('Настройки успешно удалены');
       } catch (error) {
         console.error('Error deleting equipment:', error);
+        toast.error('Ошибка при удалении настроек');
+      }
+    }
+  };
+
+  const handleDeleteGroup = async (groupIndex: number) => {
+    if (confirm('Вы уверены, что хотите удалить эти настройки?')) {
+      try {
+        const updatedGroups = equipment.groups.filter((_, index) => index !== groupIndex);
+        await updateEquipment(equipment.id, {
+          ...equipment,
+          groups: updatedGroups,
+        });
+        toast.success('Настройки успешно удалены');
+        onDelete();
+      } catch (error) {
+        console.error('Error deleting group:', error);
         toast.error('Ошибка при удалении настроек');
       }
     }
@@ -154,6 +171,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
         equipment={equipment}
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
+        onDeleteGroup={handleDeleteGroup}
       />
 
       {equipment.imageUrl && (

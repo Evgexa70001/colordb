@@ -145,10 +145,10 @@ export default function NewEquipmentModal({
         return;
       }
 
-      // Получаем URL изображения из первой группы
+      // Получаем imageUrl из первой группы
       const imageUrl = sectionGroups[0]?.imageUrl || '';
 
-      // Очищаем imageUrl из групп, так как оно теперь на уровне Equipment
+      // Подготавливаем группы без imageUrl
       const validGroups = sectionGroups
         .filter((group) => group.name.trim())
         .map(({ imageUrl: _, ...group }) => ({
@@ -163,13 +163,13 @@ export default function NewEquipmentModal({
       if (initialData) {
         await updateEquipment(initialData.id, {
           groups: validGroups,
-          imageUrl,
+          imageUrl, // Добавляем imageUrl на уровень Equipment
         });
         toast.success('Настройки успешно обновлены');
       } else {
         await saveEquipment({
           groups: validGroups,
-          imageUrl,
+          imageUrl, // Добавляем imageUrl на уровень Equipment
           createdAt: new Date(),
         });
         toast.success('Настройки успешно сохранены');

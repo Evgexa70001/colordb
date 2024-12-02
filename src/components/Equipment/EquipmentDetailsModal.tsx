@@ -1,17 +1,20 @@
 import { Dialog } from '@headlessui/react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Trash2 } from 'lucide-react';
 import type { Equipment } from '../../types';
 
 interface EquipmentDetailsModalProps {
   equipment: Equipment;
   isOpen: boolean;
   onClose: () => void;
+  onDeleteGroup?: (groupIndex: number) => void;
 }
 
 export default function EquipmentDetailsModal({
   equipment,
   isOpen,
   onClose,
+  onDeleteGroup,
 }: EquipmentDetailsModalProps) {
   const { isDark } = useTheme();
 
@@ -47,6 +50,17 @@ export default function EquipmentDetailsModal({
                   <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {group.name}
                   </h3>
+                  {index > 0 && onDeleteGroup && (
+                    <button
+                      onClick={() => onDeleteGroup(index)}
+                      className={`p-2 rounded-xl transition-colors duration-200 ${
+                        isDark
+                          ? 'bg-red-500/10 text-red-400 hover:text-red-300'
+                          : 'bg-red-50 text-red-500 hover:text-red-600'
+                      }`}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-4">
