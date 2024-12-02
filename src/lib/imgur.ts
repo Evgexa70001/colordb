@@ -1,9 +1,13 @@
 const IMGUR_CLIENT_ID = 'b4f0a3b82615df1';
 
-const getProxiedImageUrl = (url: string) => {
-  const baseUrl = url.replace('http://', 'https://').replace('imgur.com', 'i.imgur.com');
+const getDirectImageUrl = (url: string) => {
+  const directUrl = url
+    .replace('http://', 'https://')
+    .replace('imgur.com', 'i.imgur.com')
+    .replace(/\.(jpg|jpeg|png|gif)$/, '')
+    .concat('.jpg');
 
-  return `https://cdn.statically.io/img/${baseUrl.replace('https://', '')}`;
+  return directUrl;
 };
 
 export const uploadToImgur = async (file: File): Promise<string> => {
@@ -32,7 +36,7 @@ export const uploadToImgur = async (file: File): Promise<string> => {
       throw new Error('Invalid response from Imgur');
     }
 
-    return getProxiedImageUrl(data.data.link);
+    return getDirectImageUrl(data.data.link);
   } catch (error) {
     console.error('Error uploading to Imgur:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to upload image');
