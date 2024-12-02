@@ -1,17 +1,9 @@
 const IMGUR_CLIENT_ID = 'b4f0a3b82615df1';
 
 const getProxiedImageUrl = (url: string) => {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const baseUrl = 'https://images.weserv.nl/';
-  const params = new URLSearchParams({
-    url: url,
-    n: '-1', // Отключаем кэширование на стороне weserv
-    output: 'jpg', // Всегда конвертируем в jpg
-    q: isMobile ? '85' : '95', // Качество изображения
-    w: isMobile ? '800' : '1600', // Ширина изображения
-  });
+  const baseUrl = url.replace('http://', 'https://').replace('imgur.com', 'i.imgur.com');
 
-  return `${baseUrl}?${params.toString()}`;
+  return `https://cdn.statically.io/img/${baseUrl.replace('https://', '')}`;
 };
 
 export const uploadToImgur = async (file: File): Promise<string> => {
