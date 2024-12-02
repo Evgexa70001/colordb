@@ -145,28 +145,31 @@ export default function NewEquipmentModal({
         return;
       }
 
-      // Проверяем и подготавливаем данные перед сохранением
+      // Получаем URL изображения из первой группы
+      const imageUrl = sectionGroups[0]?.imageUrl || '';
+
+      // Очищаем imageUrl из групп, так как оно теперь на уровне Equipment
       const validGroups = sectionGroups
         .filter((group) => group.name.trim())
-        .map((group) => ({
+        .map(({ imageUrl: _, ...group }) => ({
           ...group,
           sections: group.sections.map((section) => ({
-            ...section,
-            // Убедимся, что URL изображения корректный
-            imageUrl: section.imageUrl ? section.imageUrl.trim() : '',
+            anilox: section.anilox || '',
+            paint: section.paint || '',
+            additionalInfo: section.additionalInfo || '',
           })),
         }));
-
-      console.log('Saving groups:', validGroups); // Для отладки
 
       if (initialData) {
         await updateEquipment(initialData.id, {
           groups: validGroups,
+          imageUrl,
         });
         toast.success('Настройки успешно обновлены');
       } else {
         await saveEquipment({
           groups: validGroups,
+          imageUrl,
           createdAt: new Date(),
         });
         toast.success('Настройки успешно сохранены');
