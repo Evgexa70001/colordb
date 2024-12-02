@@ -9,12 +9,8 @@ export const uploadToImgur = async (file: File): Promise<string> => {
       method: 'POST',
       headers: {
         Authorization: `Client-ID ${IMGUR_CLIENT_ID}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        image: base64Data,
-        type: 'base64',
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -32,13 +28,4 @@ export const uploadToImgur = async (file: File): Promise<string> => {
     console.error('Error uploading to Imgur:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to upload image');
   }
-};
-
-const convertToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 };
