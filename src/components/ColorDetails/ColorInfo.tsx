@@ -1,5 +1,5 @@
-import { useTheme } from '../../contexts/ThemeContext';
-import type { ColorInfo } from '../../utils/colorUtils';
+import { useTheme } from '@contexts/ThemeContext';
+import type { ColorInfo } from '@utils/colorUtils';
 
 interface ColorInfoProps {
   colorInfo: ColorInfo;

@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
-import Equipment from './components/Equipment';
+import Equipment from './components/Equipments';
 import Login from './components/Auth/Login';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { normalizeHexColor } from '../../utils/colorUtils';
-import RecipeComparison from './RecipeComparison';
-import ColorComparison from './ColorComparison';
-import type { PantoneColor } from '../../types';
+import { useTheme } from '@contexts/ThemeContext';
+import { normalizeHexColor } from '@utils/colorUtils';
+
+import { RecipeComparison, ColorComparison } from '../ColorDetails';
+import type { PantoneColor } from '@/types';
 
 interface SimilarColorsProps {
   similarColors: (PantoneColor & { distance?: number })[];
@@ -85,7 +85,12 @@ export default function SimilarColors({ similarColors, originalColor }: SimilarC
             name2={selectedColor.name}
           />
           {originalColor.recipe && selectedColor.recipe && (
-            <RecipeComparison recipe1={originalColor.recipe} recipe2={selectedColor.recipe} />
+            <RecipeComparison
+              recipe1={originalColor.recipe}
+              recipe2={selectedColor.recipe}
+              name1={originalColor.name}
+              name2={selectedColor.name}
+            />
           )}
         </>
       )}

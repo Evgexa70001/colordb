@@ -1,5 +1,5 @@
-import { useTheme } from '../../contexts/ThemeContext';
-import { normalizeHexColor, hexToRgb } from '../../utils/colorUtils';
+import { useTheme } from '@contexts/ThemeContext';
+import { normalizeHexColor, hexToRgb } from '@utils/colorUtils';
 
 interface ColorComparisonProps {
   color1: string;

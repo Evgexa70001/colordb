@@ -1,4 +1,4 @@
-import Equipment from '../../components/Equipment';
+import Equipment from '../../components/Equipments';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 
 export default function EquipmentPage() {

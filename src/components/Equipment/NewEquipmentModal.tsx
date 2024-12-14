@@ -1,11 +1,13 @@
 import { Dialog } from '@headlessui/react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 import { Plus, X, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { saveEquipment, updateEquipment } from '../../lib/equipment';
+import { saveEquipment, updateEquipment } from '@lib/equipment';
 import toast from 'react-hot-toast';
-import type { Equipment } from '../../types';
-import { uploadToImgur } from '../../lib/imgur';
+import type { Equipment } from '@/types';
+import { uploadToImgur } from '@lib/imgur';
+import { getCustomers } from '@lib/customers';
+import type { PantoneColor } from '@/types';
 
 interface Section {
   anilox: string;
@@ -26,21 +28,46 @@ interface NewEquipmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: Equipment;
+  colors: PantoneColor[];
 }
 
 export default function NewEquipmentModal({
   isOpen,
   onClose,
   initialData,
+  colors,
 }: NewEquipmentModalProps) {
   const { isDark } = useTheme();
-  const [sectionGroups, setSectionGroups] = useState<SectionGroup[]>(
-    initialData?.groups || [{ name: '', material: '', date: '', sections: [] }],
-  );
+
+  const [paintSuggestions, setPaintSuggestions] = useState<PantoneColor[]>([]);
+
+  const [sectionGroups, setSectionGroups] = useState<SectionGroup[]>([]);
+  // const [customers, setCustomers] = useState<string[]>([]);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [existingCustomers, setExistingCustomers] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      const loadedCustomers = await getCustomers();
+      setExistingCustomers(loadedCustomers);
+    };
+    loadCustomers();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      setSectionGroups(initialData?.groups || [{ name: '', material: '', date: '', sections: [] }]);
+      if (initialData) {
+        setSectionGroups(
+          initialData.groups.map((group) => ({
+            ...group,
+            imageUrl: group === initialData.groups[0] ? initialData.imageUrl : undefined,
+          })),
+        );
+        setSelectedCustomers(initialData.customers || []);
+      } else {
+        setSectionGroups([{ name: '', material: '', date: '', sections: [] }]);
+        setSelectedCustomers([]);
+      }
     }
   }, [isOpen, initialData]);
 
@@ -116,7 +143,6 @@ export default function NewEquipmentModal({
 
       toast.loading('Загрузка изображения...', { id: 'uploadImage' });
       const imageUrl = await uploadToImgur(file);
-      console.log('Uploaded image URL:', imageUrl);
 
       setSectionGroups((prevGroups) =>
         prevGroups.map((group, index) =>
@@ -141,14 +167,12 @@ export default function NewEquipmentModal({
   const handleSave = async () => {
     try {
       if (!sectionGroups.some((group) => group.name.trim())) {
-        toast.error('Добавьте название хотя бы для одной группы');
+        toast.error('Добавьте название хотя бы для одной грппы');
         return;
       }
 
-      // Получаем imageUrl из первой группы
       const imageUrl = sectionGroups[0]?.imageUrl || '';
 
-      // Подготавливаем группы без imageUrl
       const validGroups = sectionGroups
         .filter((group) => group.name.trim())
         .map(({ imageUrl: _, ...group }) => ({
@@ -160,18 +184,18 @@ export default function NewEquipmentModal({
           })),
         }));
 
+      const equipmentData = {
+        groups: validGroups,
+        imageUrl,
+        customers: selectedCustomers,
+        createdAt: new Date(),
+      };
+
       if (initialData) {
-        await updateEquipment(initialData.id, {
-          groups: validGroups,
-          imageUrl, // Добавляем imageUrl на уровень Equipment
-        });
+        await updateEquipment(initialData.id, equipmentData);
         toast.success('Настройки успешно обновлены');
       } else {
-        await saveEquipment({
-          groups: validGroups,
-          imageUrl, // Добавляем imageUrl на уровень Equipment
-          createdAt: new Date(),
-        });
+        await saveEquipment(equipmentData);
         toast.success('Настройки успешно сохранены');
       }
 
@@ -197,13 +221,61 @@ export default function NewEquipmentModal({
           </Dialog.Title>
 
           <div className="space-y-6">
+            <div>
+              <label
+                className={`block text-sm font-medium mb-1 ${
+                  isDark ? 'text-gray-200' : 'text-gray-700'
+                }`}>
+                Заказчики
+              </label>
+              <div className="space-y-2">
+                <select
+                  multiple
+                  className={`w-full px-4 py-2 rounded-xl border ${
+                    isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                    setSelectedCustomers((prev) => [...new Set([...prev, ...selected])]);
+                  }}>
+                  {existingCustomers
+                    .filter((customer) => !selectedCustomers.includes(customer))
+                    .map((customer) => (
+                      <option key={customer} value={customer}>
+                        {customer}
+                      </option>
+                    ))}
+                </select>
+
+                <div className="flex flex-wrap gap-2">
+                  {selectedCustomers.map((customer) => (
+                    <div
+                      key={customer}
+                      className={`px-3 py-1 rounded-lg text-sm flex items-center gap-2 ${
+                        isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                      {customer}
+                      <button
+                        onClick={() =>
+                          setSelectedCustomers((prev) => prev.filter((c) => c !== customer))
+                        }
+                        className="hover:text-red-500">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {sectionGroups.map((group, groupIndex) => (
               <div key={groupIndex} className="space-y-4">
                 {groupIndex > 0 && (
                   <div className={`h-px w-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} my-6`} />
                 )}
 
-                {/* Заголовок группы с кнопкой удаления */}
                 <div className="flex justify-between items-start">
                   <label
                     htmlFor={`name-${groupIndex}`}
@@ -227,15 +299,7 @@ export default function NewEquipmentModal({
                   )}
                 </div>
 
-                {/* Название и материал для группы */}
                 <div>
-                  <label
-                    htmlFor={`name-${groupIndex}`}
-                    className={`block text-sm font-medium mb-1 ${
-                      isDark ? 'text-gray-200' : 'text-gray-700'
-                    }`}>
-                    Название
-                  </label>
                   <input
                     type="text"
                     id={`name-${groupIndex}`}
@@ -249,6 +313,47 @@ export default function NewEquipmentModal({
                     placeholder="Введите название этикетки"
                   />
                 </div>
+
+                {groupIndex === 0 && (
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-1 ${
+                        isDark ? 'text-gray-200' : 'text-gray-700'
+                      }`}>
+                      Изображение
+                    </label>
+                    <div className="flex gap-4 items-start">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (files && files.length > 0) {
+                            uploadImage(files[0], groupIndex);
+                          }
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-xl border ${
+                          isDark
+                            ? 'bg-gray-700 border-gray-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      />
+                      {group.imageUrl && (
+                        <div className="w-20 h-20 rounded-lg overflow-hidden">
+                          <img
+                            src={group.imageUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Preview image load error:', e);
+                              e.currentTarget.src = '';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label
@@ -279,45 +384,6 @@ export default function NewEquipmentModal({
 
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${
-                      isDark ? 'text-gray-200' : 'text-gray-700'
-                    }`}>
-                    Изображение
-                  </label>
-                  <div className="flex gap-4 items-start">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files.length > 0) {
-                          uploadImage(files[0], groupIndex);
-                        }
-                      }}
-                      className={`flex-1 px-4 py-2 rounded-xl border ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    />
-                    {group.imageUrl && (
-                      <div className="w-20 h-20 rounded-lg overflow-hidden">
-                        <img
-                          src={group.imageUrl}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('Preview image load error:', e);
-                            e.currentTarget.src = ''; // Очищаем src при ошибке
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label
                     htmlFor={`date-${groupIndex}`}
                     className={`block text-sm font-medium mb-1 ${
                       isDark ? 'text-gray-200' : 'text-gray-700'
@@ -337,7 +403,6 @@ export default function NewEquipmentModal({
                   />
                 </div>
 
-                {/* Секции для текущей группы */}
                 {group.sections.map((section, sectionIndex) => (
                   <div
                     key={sectionIndex}
@@ -361,7 +426,6 @@ export default function NewEquipmentModal({
                     </div>
 
                     <div className="space-y-4">
-                      {/* Анилокс */}
                       <div>
                         <label
                           className={`block text-sm font-medium mb-1 ${
@@ -388,8 +452,6 @@ export default function NewEquipmentModal({
                           <option value="2.5" />
                         </datalist>
                       </div>
-
-                      {/* Краска */}
                       <div>
                         <label
                           className={`block text-sm font-medium mb-1 ${
@@ -397,22 +459,77 @@ export default function NewEquipmentModal({
                           }`}>
                           Краска
                         </label>
-                        <input
-                          type="text"
-                          value={section.paint}
-                          onChange={(e) =>
-                            updateSection(groupIndex, sectionIndex, { paint: e.target.value })
-                          }
-                          className={`w-full px-4 py-2 rounded-xl border ${
-                            isDark
-                              ? 'bg-gray-700 border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                          placeholder="Введите название краски"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={section.paint}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              updateSection(groupIndex, sectionIndex, { paint: value });
+                              // Фильтруем краски при вводе
+                              const suggestions = colors
+                                .filter(
+                                  (color) =>
+                                    color.name.toLowerCase().includes(value.toLowerCase()) ||
+                                    (color.alternativeName &&
+                                      color.alternativeName
+                                        .toLowerCase()
+                                        .includes(value.toLowerCase())),
+                                )
+                                .slice(0, 5);
+                              setPaintSuggestions(suggestions);
+                            }}
+                            onFocus={() => {
+                              // Показываем все краски при фокусе, если поле пустое
+                              if (!section.paint) {
+                                setPaintSuggestions(colors.slice(0, 5));
+                              }
+                            }}
+                            className={`w-full px-4 py-2 rounded-xl border ${
+                              isDark
+                                ? 'bg-gray-700 border-gray-600 text-white'
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                            placeholder="Введите название краски"
+                          />
+                          {paintSuggestions.length > 0 && (
+                            <div
+                              className={`absolute z-50 w-full mt-1 rounded-xl border shadow-lg ${
+                                isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                              }`}>
+                              {paintSuggestions.map((color, index) => (
+                                <button
+                                  key={index}
+                                  className={`w-full text-left px-4 py-2 first:rounded-t-xl last:rounded-b-xl flex items-center gap-3 ${
+                                    isDark
+                                      ? 'text-white hover:bg-gray-600'
+                                      : 'text-gray-900 hover:bg-gray-50'
+                                  }`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    updateSection(groupIndex, sectionIndex, { paint: color.name });
+                                    setPaintSuggestions([]);
+                                  }}>
+                                  <div
+                                    className="w-4 h-4 rounded-md border"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  <span>{color.name}</span>
+                                  {color.alternativeName && (
+                                    <span
+                                      className={`text-sm ${
+                                        isDark ? 'text-gray-400' : 'text-gray-500'
+                                      }`}>
+                                      ({color.alternativeName})
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Дополнительная информация */}
                       <div>
                         <label
                           className={`block text-sm font-medium mb-1 ${
@@ -440,7 +557,6 @@ export default function NewEquipmentModal({
                   </div>
                 ))}
 
-                {/* Кнопка добавления секции для текущей группы */}
                 <button
                   type="button"
                   onClick={() => addSection(groupIndex)}
@@ -453,7 +569,6 @@ export default function NewEquipmentModal({
               </div>
             ))}
 
-            {/* Кнопка добавления новой группы настроек */}
             <button
               type="button"
               onClick={addSectionGroup}
@@ -468,7 +583,6 @@ export default function NewEquipmentModal({
               </span>
             </button>
 
-            {/* Кнопки действий */}
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={onClose}

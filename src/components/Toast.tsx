@@ -1,5 +1,5 @@
 import { Toaster } from 'react-hot-toast';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 
 export default function Toast() {
   const { isDark } = useTheme();

@@ -1,19 +1,25 @@
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 import { Pencil, Trash2, Image } from 'lucide-react';
-import type { Equipment } from '../../types';
-import { deleteEquipment, updateEquipment } from '../../lib/equipment';
+import type { Equipment, PantoneColor } from '@/types';
+import { deleteEquipment } from '@/lib/equipment';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
-import ImagePreviewModal from './ImagePreviewModal';
-import EquipmentDetailsModal from './EquipmentDetailsModal';
+
+import { ImagePreviewModal, EquipmentDetailsModal } from '../Equipment';
 
 interface EquipmentDataCardProps {
   equipment: Equipment;
   onEdit: () => void;
   onDelete: () => void;
+  colors: PantoneColor[];
 }
 
-export default function EquipmentDataCard({ equipment, onEdit, onDelete }: EquipmentDataCardProps) {
+export default function EquipmentDataCard({
+  equipment,
+  onEdit,
+  onDelete,
+  colors,
+}: EquipmentDataCardProps) {
   const { isDark } = useTheme();
   const firstGroup = equipment.groups[0];
   const [imageError, setImageError] = useState(false);
@@ -34,23 +40,6 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
     }
   };
 
-  const handleDeleteGroup = async (groupIndex: number) => {
-    if (confirm('Вы уверены, что хотите удалить эти настройки?')) {
-      try {
-        const updatedGroups = equipment.groups.filter((_, index) => index !== groupIndex);
-        await updateEquipment(equipment.id, {
-          ...equipment,
-          groups: updatedGroups,
-        });
-        toast.success('Настройки успешно удалены');
-        onDelete();
-      } catch (error) {
-        console.error('Error deleting group:', error);
-        toast.error('Ошибка при удалении настроек');
-      }
-    }
-  };
-
   return (
     <>
       <div
@@ -63,8 +52,11 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
         <div className="h-full flex flex-col gap-4">
           {hasImage ? (
             <div
-              className="w-full h-40 rounded-lg overflow-hidden cursor-pointer"
-              onClick={() => setIsImagePreviewOpen(true)}>
+              className="w-full h-40 rounded-lg overflow-hidden cursor-pointer relative z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsImagePreviewOpen(true);
+              }}>
               <img
                 src={equipment.imageUrl}
                 alt={`Preview of ${firstGroup.name}`}
@@ -171,7 +163,7 @@ export default function EquipmentDataCard({ equipment, onEdit, onDelete }: Equip
         equipment={equipment}
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        onDeleteGroup={handleDeleteGroup}
+        colors={colors}
       />
 
       {equipment.imageUrl && (

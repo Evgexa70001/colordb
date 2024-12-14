@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
 import { Beaker, ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { useTheme } from '@contexts/ThemeContext';
 
 interface Recipe {
   totalAmount: number;
   material: string;
   anilox?: string;
   comment?: string;
+  name?: string;
   items: {
     paint: string;
     amount: number;
@@ -16,6 +18,8 @@ interface Recipe {
 interface RecipeComparisonProps {
   recipe1: string;
   recipe2: string;
+  name1?: string;
+  name2?: string;
 }
 
 interface CommonIngredient {
@@ -25,8 +29,16 @@ interface CommonIngredient {
   difference: number;
 }
 
+interface RecipeVariant {
+  recipe1: Recipe;
+  recipe2: Recipe;
+  index1: number;
+  index2: number;
+}
+
 function parseRecipe(recipeString: string): Recipe[] {
   const lines = recipeString.split('\n');
+
   const recipes: Recipe[] = [];
   let currentRecipe: Recipe | null = null;
 
@@ -53,8 +65,9 @@ function parseRecipe(recipeString: string): Recipe[] {
     } else if (commentMatch && currentRecipe) {
       currentRecipe.comment = commentMatch[1];
     } else if (paintMatch && currentRecipe) {
+      const paint = paintMatch[1];
       currentRecipe.items.push({
-        paint: paintMatch[1],
+        paint: paint,
         amount: parseInt(paintMatch[2]),
       });
     }
@@ -95,13 +108,19 @@ const getUniqueIngredients = (r1: Recipe, r2: Recipe) => {
     }));
 };
 
-export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonProps) {
+export default function RecipeComparison({
+  recipe1,
+  recipe2,
+  name1,
+  name2,
+}: RecipeComparisonProps) {
   const { isDark } = useTheme();
+
   const recipes1 = parseRecipe(recipe1);
   const recipes2 = parseRecipe(recipe2);
   const [currentVariant, setCurrentVariant] = useState(0);
 
-  const allVariants = recipes1.flatMap((r1, i1) =>
+  const allVariants: RecipeVariant[] = recipes1.flatMap((r1, i1) =>
     recipes2.map((r2, i2) => ({ recipe1: r1, recipe2: r2, index1: i1, index2: i2 })),
   );
 
@@ -195,7 +214,7 @@ export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonP
                         className={`text-sm font-medium mb-3 ${
                           isDark ? 'text-blue-300' : 'text-blue-700'
                         }`}>
-                        Рецепт 1
+                        {name1 || 'Рецепт 1'}
                       </h4>
                       <p className="text-sm mb-2">Материал: {variant.recipe1.material}</p>
                       {variant.recipe1.anilox && (
@@ -212,7 +231,7 @@ export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonP
                         className={`text-sm font-medium mb-3 ${
                           isDark ? 'text-purple-300' : 'text-purple-700'
                         }`}>
-                        Рецепт 2
+                        {name2 || 'Рецепт 2'}
                       </h4>
                       <p className="text-sm mb-2">Материал: {variant.recipe2.material}</p>
                       {variant.recipe2.anilox && (
@@ -221,7 +240,7 @@ export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonP
                     </div>
                   </div>
 
-                  {/* Общие компоненты */}
+                  {/* Общие компоне��ты */}
                   <div className="space-y-4">
                     <h4
                       className={`text-xs font-semibold uppercase tracking-wider ${
@@ -309,7 +328,7 @@ export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonP
                             className={`text-sm font-medium mb-2 ${
                               isDark ? 'text-blue-300' : 'text-blue-700'
                             }`}>
-                            Рецепт 1:
+                            {name1 || 'Рецепт 1'}:
                           </p>
                           {uniqueIngredients1.map((item, i) => (
                             <div key={i} className="flex items-center gap-2 mb-1">
@@ -337,7 +356,7 @@ export default function RecipeComparison({ recipe1, recipe2 }: RecipeComparisonP
                             className={`text-sm font-medium mb-2 ${
                               isDark ? 'text-purple-300' : 'text-purple-700'
                             }`}>
-                            Рецепт 2:
+                            {name2 || 'Рецепт 2'}:
                           </p>
                           {uniqueIngredients2.map((item, i) => (
                             <div key={i} className="flex items-center gap-2 mb-1">

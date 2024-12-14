@@ -18,7 +18,21 @@ export interface PantoneColor {
   notes?: string;
   manager?: string;
   createdAt?: string | { seconds: number; nanoseconds: number };
+  updatedAt?: string | { seconds: number; nanoseconds: number };
   isVerified?: boolean;
+}
+
+export interface ColorData {
+  name: string;
+  alternativeName?: string;
+  hex: string;
+  category: string;
+  recipe?: string;
+  customers?: string[];
+  inStock: boolean;
+  isVerified?: boolean;
+  notes?: string;
+  manager?: string;
 }
 
 // Modal Props
@@ -44,13 +58,6 @@ export interface NewCategoryModalProps {
   onClose: () => void;
   onSave: (name: string) => void;
   existingCategories: string[];
-}
-
-export interface NewGroupModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (name: string) => void;
-  existingGroups: string[];
 }
 
 export interface ColorDetailsModalProps {
@@ -113,4 +120,5 @@ export interface Equipment {
   imageUrl?: string;
   groups: EquipmentGroup[];
   createdAt: Date;
+  customers?: string[];
 }

@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Button } from '@components/ui/Button/Button';
 import { Plus, FolderPlus, Trash2, ShieldAlert, LogOut, ChevronDown, Users } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import ColorCard from './ColorCard';
-import SkeletonColorCard from './SkeletonColorCard';
-import NewColorModal from './NewColorModal';
-import EditColorModal from './EditColorModal';
+import { useTheme } from '@contexts/ThemeContext';
+import { useAuth } from '@contexts/AuthContext';
+import { ColorCard, SkeletonColorCard, NewColorModal, NewCategoryModal } from './ColorCard';
 import ColorDetailsModal from './ColorDetails/ColorDetailsModal';
-import NewCategoryModal from './NewCategoryModal';
 import SortControls from './SortControls';
-import { getColors, saveColor, updateColor, deleteColor, setOfflineMode } from '../lib/colors';
-import { getCategories, addCategory, deleteCategory } from '../lib/categories';
-import { getColorDistance, isValidHexColor } from '../utils/colorUtils';
-import type { PantoneColor } from '../types';
+import { getColors, saveColor, updateColor, deleteColor, setOfflineMode } from '@lib/colors';
+import { getCategories, addCategory, deleteCategory } from '@lib/categories';
+import { getColorDistance, isValidHexColor } from '@utils/colorUtils';
+import type { PantoneColor, ColorData } from '@/types';
 import toast from 'react-hot-toast';
 // import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header';
+import { DropdownSelect } from '@components/ui/DropdownSelect/DropdownSelect';
 
 type SortField = 'name' | 'inStock' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
@@ -389,9 +387,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateColor = async (updatedColor: PantoneColor) => {
+  const handleUpdateColor = async (colorData: ColorData) => {
     try {
-      await updateColor(updatedColor);
+      await updateColor({ ...colorData, id: selectedColor!.id });
       await loadData();
       setIsEditModalOpen(false);
       toast.success('Цвет успешно обновлен');
@@ -497,6 +495,11 @@ export default function Dashboard() {
 
   const totalPages = Math.ceil(filteredColors.length / ITEMS_PER_PAGE);
 
+  const categoryOptions = [
+    { id: 'all', label: 'Все категории' },
+    ...categories.map((cat) => ({ id: cat, label: cat })),
+  ];
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <Header onSidebarOpen={() => setSidebarOpen(true)} />
@@ -543,102 +546,51 @@ export default function Dashboard() {
             {/* Кнопки админа */}
             {user?.isAdmin && (
               <div className="px-6 space-y-2 mb-6">
-                <button
+                <Button
+                  className="w-full"
+                  leftIcon={<Plus className="w-4 h-4" />}
                   onClick={() => {
                     setIsNewColorModalOpen(true);
                     setSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg">
-                  <Plus className="w-4 h-4" />
-                  <span>Добавить цвет</span>
-                </button>
-                <button
+                  }}>
+                  Добавить цвет
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  leftIcon={<FolderPlus className="w-4 h-4" />}
                   onClick={() => {
                     setIsNewCategoryModalOpen(true);
                     setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                    isDark
-                      ? 'bg-gray-700/50 text-gray-200 hover:bg-gray-600'
-                      : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200'
-                  }`}>
-                  <FolderPlus className="w-4 h-4" />
-                  <span>Добавить категорию</span>
-                </button>
+                  }}>
+                  Добавить категорию
+                </Button>
               </div>
             )}
 
             {/* Категории */}
             <div className="px-6 mb-6">
-              <h2
-                className={`text-sm font-semibold mb-3 ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                } uppercase tracking-wider`}>
-                Категории
-              </h2>
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
-                    if (!isCategoryDropdownOpen) {
-                      setIsCustomerDropdownOpen(false);
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                    isDark
-                      ? 'bg-gray-700/50 text-gray-200 hover:bg-gray-700'
-                      : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200'
-                  } border ${isDark ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <div className="flex items-center gap-2">
-                    <FolderPlus className="w-4 h-4" />
-                    <span className="truncate">
-                      {selectedCategory === 'all' ? 'Все категории' : selectedCategory}
-                    </span>
-                  </div>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 
-                    ${isCategoryDropdownOpen ? 'transform rotate-180' : ''}`}
-                  />
-                </button>
-
-                {isCategoryDropdownOpen && (
-                  <div
-                    id="category-dropdown"
-                    className={`absolute z-50 w-full mt-2 py-1 rounded-xl shadow-lg border 
-                    transform transition-all duration-300 ease-out origin-top
-                    ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
-                    ${
-                      isCategoryDropdownOpen
-                        ? 'opacity-100 scale-y-100 translate-y-0'
-                        : 'opacity-0 scale-y-0 -translate-y-2'
-                    }`}>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory('all');
-                        setIsCategoryDropdownOpen(false);
-                        setSidebarOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 transition-colors duration-200
-                        ${
-                          isDark
-                            ? 'hover:bg-gray-700/50 text-gray-300'
-                            : 'hover:bg-gray-100 text-gray-700'
-                        }`}>
-                      Все категории
-                    </button>
-
-                    {categories.map((category) => (
-                      <div key={category} className="flex items-center group">
-                        <button
-                          onClick={() => {
-                            setSelectedCategory(category);
-                            setIsCategoryDropdownOpen(false);
-                            setSidebarOpen(false);
-                          }}
-                          className={`flex-1 text-left px-4 py-2.5 transition-colors duration-200
-                            ${
-                              selectedCategory === category
+              <DropdownSelect
+                title="Категории"
+                id="category-dropdown"
+                value={selectedCategory}
+                options={categoryOptions}
+                onChange={setSelectedCategory}
+                icon={<FolderPlus className="w-4 h-4" />}
+                label="Выберите категорию"
+                isOpen={isCategoryDropdownOpen}
+                onToggle={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                customOptionRender={
+                  user?.isAdmin
+                    ? (option) => (
+                        <div key={option.id} className="flex items-center group">
+                          <button
+                            onClick={() => {
+                              setSelectedCategory(option.id);
+                              setIsCategoryDropdownOpen(false);
+                            }}
+                            className={`flex-1 text-left px-4 py-2.5 transition-colors duration-200 ${
+                              selectedCategory === option.id
                                 ? isDark
                                   ? 'bg-gray-700 text-white'
                                   : 'bg-gray-100 text-gray-900'
@@ -646,29 +598,31 @@ export default function Dashboard() {
                                 ? 'hover:bg-gray-700/50 text-gray-300'
                                 : 'hover:bg-gray-100 text-gray-700'
                             }`}>
-                          {category}
-                        </button>
-                        {user?.isAdmin && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Вы точно хотите удалить категорию "${category}"?`)) {
-                                handleDeleteCategory(category);
-                              }
-                            }}
-                            className="p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <Trash2
-                              className={`w-4 h-4 ${
-                                isDark ? 'text-red-400' : 'text-red-500'
-                              } hover:text-red-600`}
-                            />
+                            {option.label}
                           </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                          {option.id !== 'all' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm(`Вы точно хотите удалить категорию "${option.label}"?`)
+                                ) {
+                                  handleDeleteCategory(option.id);
+                                }
+                              }}
+                              className="p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <Trash2
+                                className={`w-4 h-4 ${
+                                  isDark ? 'text-red-400' : 'text-red-500'
+                                } hover:text-red-600`}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    : undefined
+                }
+              />
             </div>
 
             {/* Заказчики */}
@@ -902,16 +856,13 @@ export default function Dashboard() {
             </div>
 
             {/* Кнопка выхода */}
-            <button
+            <Button
+              variant="secondary"
+              leftIcon={<LogOut className="w-4 h-4" />}
               onClick={() => signOut()}
-              className={`mt-auto mx-6 mb-6 sm:hidden flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                isDark
-                  ? 'bg-gray-700/50 text-gray-200 hover:bg-gray-600'
-                  : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200'
-              }`}>
-              <LogOut className="w-4 h-4" />
-              <span>Выйти</span>
-            </button>
+              className="mt-3 mx-6 mb-6  sm:hidden">
+              Выйти
+            </Button>
           </div>
         </div>
       </aside>
@@ -1001,8 +952,7 @@ export default function Dashboard() {
 
       {selectedColor && (
         <>
-          <EditColorModal
-            color={selectedColor}
+          <NewColorModal
             isOpen={isEditModalOpen}
             onClose={() => {
               setIsEditModalOpen(false);
@@ -1011,6 +961,7 @@ export default function Dashboard() {
             onSave={handleUpdateColor}
             categories={categories}
             existingCustomers={getAllCustomers()}
+            initialData={selectedColor}
           />
 
           <ColorDetailsModal
@@ -1025,6 +976,14 @@ export default function Dashboard() {
           />
         </>
       )}
+
+      {/* <NewColorModal
+        isOpen={isNewColorModalOpen}
+        onClose={() => setIsNewColorModalOpen(false)}
+        onSave={handleSaveNewColor}
+        categories={categories}
+        existingCustomers={getAllCustomers()}
+      /> */}
 
       <NewColorModal
         isOpen={isNewColorModalOpen}

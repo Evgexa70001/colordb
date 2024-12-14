@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
+import {
   User as FirebaseUser,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -31,11 +31,11 @@ export function useAuth() {
 async function getUserData(firebaseUser: FirebaseUser): Promise<User> {
   const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
   const userData = userDoc.data();
-  
+
   return {
     uid: firebaseUser.uid,
     email: firebaseUser.email,
-    isAdmin: userData?.isAdmin || false
+    isAdmin: userData?.isAdmin || false,
   };
 }
 
@@ -44,7 +44,7 @@ async function createUserDocument(firebaseUser: FirebaseUser): Promise<void> {
   await setDoc(userRef, {
     email: firebaseUser.email,
     isAdmin: false, // By default, new users are not admins
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 }
 

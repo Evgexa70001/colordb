@@ -1,10 +1,10 @@
 import { Dialog } from '@headlessui/react';
 import { X, Beaker, UserCircle, StickyNote, Percent } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { getColorInfo, normalizeHexColor } from '../../utils/colorUtils';
-import ColorInfo from './ColorInfo';
-import SimilarColors from './SimilarColors';
-import type { PantoneColor, Recipe } from '../../types';
+import { useTheme } from '@contexts/ThemeContext';
+import { getColorInfo, normalizeHexColor } from '@utils/colorUtils';
+
+import { ColorInfo, SimilarColors } from '../ColorDetails';
+import type { PantoneColor, Recipe } from '@/types';
 
 interface ColorDetailsModalProps {
   color: PantoneColor;
@@ -123,24 +123,24 @@ export default function ColorDetailsModal({
     const recipes: {
       totalAmount: number;
       material: string;
-      anilox?: string;
       comment?: string;
+      name?: string;
       items: { paint: string; amount: number }[];
     }[] = [];
     let currentRecipe: {
       totalAmount: number;
       material: string;
-      anilox?: string;
       comment?: string;
+      name?: string;
       items: { paint: string; amount: number }[];
     } | null = null;
 
     lines.forEach((line) => {
       const totalAmountMatch = line.match(/Общее количество: (\d+)/);
       const materialMatch = line.match(/Материал: (.+)/);
-      const aniloxMatch = line.match(/Анилокс: (.+)/);
       const commentMatch = line.match(/Комментарий:\n([\s\S]+?)(?=\nОбщее количество:|$)/);
       const paintMatch = line.match(/Краска: (.+), Количество: (\d+)/);
+      const nameMatch = line.match(/Название: (.+)/);
 
       if (totalAmountMatch) {
         if (currentRecipe) {
@@ -149,16 +149,16 @@ export default function ColorDetailsModal({
         currentRecipe = {
           totalAmount: parseInt(totalAmountMatch[1]),
           material: '',
-          anilox: '',
           comment: '',
+          name: '',
           items: [],
         };
       } else if (materialMatch && currentRecipe) {
         currentRecipe.material = materialMatch[1];
-      } else if (aniloxMatch && currentRecipe) {
-        currentRecipe.anilox = aniloxMatch[1];
       } else if (commentMatch && currentRecipe) {
         currentRecipe.comment = commentMatch[1].trim();
+      } else if (nameMatch && currentRecipe) {
+        currentRecipe.name = nameMatch[1].trim();
       } else if (paintMatch && currentRecipe) {
         currentRecipe.items.push({
           paint: paintMatch[1],
@@ -184,10 +184,9 @@ export default function ColorDetailsModal({
           className={`text-xs uppercase tracking-wider mb-1 ${
             isDark ? 'text-blue-300/70' : 'text-blue-600/70'
           }`}>
-          Рецепт {index + 1}
+          {recipe.name || `Рецепт ${index + 1}`}
         </div>
         <span className="block font-medium">Материал: {recipe.material}</span>
-        {recipe.anilox && <span className="block">Анилокс: {recipe.anilox}</span>}
         {recipe.comment && (
           <div className="block italic text-sm">
             <span className="font-medium">Комментарий:</span>

@@ -1,22 +1,25 @@
 import { Dialog } from '@headlessui/react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Trash2 } from 'lucide-react';
-import type { Equipment } from '../../types';
+import { useTheme } from '@contexts/ThemeContext';
+import type { Equipment, PantoneColor } from '@/types';
 
 interface EquipmentDetailsModalProps {
   equipment: Equipment;
   isOpen: boolean;
   onClose: () => void;
-  onDeleteGroup?: (groupIndex: number) => void;
+  colors: PantoneColor[];
 }
 
 export default function EquipmentDetailsModal({
   equipment,
   isOpen,
   onClose,
-  onDeleteGroup,
+  colors,
 }: EquipmentDetailsModalProps) {
   const { isDark } = useTheme();
+
+  const findColorByName = (name: string) => {
+    return colors.find((color) => color.name === name || color.alternativeName === name);
+  };
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -40,6 +43,28 @@ export default function EquipmentDetailsModal({
               </div>
             )}
 
+            {equipment.customers && equipment.customers.length > 0 && (
+              <div>
+                <h4
+                  className={`text-sm font-medium mb-2 ${
+                    isDark ? 'text-gray-200' : 'text-gray-700'
+                  }`}>
+                  Заказчики:
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {equipment.customers.map((customer) => (
+                    <div
+                      key={customer}
+                      className={`px-3 py-1 rounded-lg text-sm ${
+                        isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                      {customer}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {equipment.groups.map((group, index) => (
               <div
                 key={index}
@@ -50,17 +75,6 @@ export default function EquipmentDetailsModal({
                   <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {group.name}
                   </h3>
-                  {index > 0 && onDeleteGroup && (
-                    <button
-                      onClick={() => onDeleteGroup(index)}
-                      className={`p-2 rounded-xl transition-colors duration-200 ${
-                        isDark
-                          ? 'bg-red-500/10 text-red-400 hover:text-red-300'
-                          : 'bg-red-50 text-red-500 hover:text-red-600'
-                      }`}>
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -131,12 +145,20 @@ export default function EquipmentDetailsModal({
                                 className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                 Краска:
                               </span>
-                              <p
-                                className={`text-sm font-medium ${
-                                  isDark ? 'text-gray-200' : 'text-gray-900'
-                                }`}>
-                                {section.paint}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                {findColorByName(section.paint) && (
+                                  <div
+                                    className="w-4 h-4 rounded-md border"
+                                    style={{ backgroundColor: findColorByName(section.paint)?.hex }}
+                                  />
+                                )}
+                                <p
+                                  className={`text-sm font-medium ${
+                                    isDark ? 'text-gray-200' : 'text-gray-900'
+                                  }`}>
+                                  {section.paint}
+                                </p>
+                              </div>
                             </div>
                           </div>
                           {section.additionalInfo && (

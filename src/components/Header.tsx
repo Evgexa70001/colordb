@@ -1,7 +1,8 @@
 import { useLocation, Link } from 'react-router-dom';
 import { Sun, Moon, LogOut, Menu, ShieldAlert } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '@contexts/ThemeContext';
+import { useAuth } from '@contexts/AuthContext';
+import { Button } from '@/components/ui/Button';
 
 interface HeaderProps {
   onSidebarOpen?: () => void;
@@ -96,16 +97,12 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
 
               <div className="h-6 w-px bg-gray-400/30" />
 
-              <button
+              <Button
+                leftIcon={<LogOut className="w-4 h-4" />}
                 onClick={() => signOut()}
-                className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isDark
-                    ? 'bg-gray-700/50 text-gray-200 hover:bg-gray-600'
-                    : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200'
-                }`}>
-                <LogOut className="w-4 h-4" />
-                <span>Выйти</span>
-              </button>
+                variant="outline">
+                Выйти
+              </Button>
             </div>
           </div>
         </div>

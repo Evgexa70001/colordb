@@ -28,7 +28,6 @@ export const uploadToImgur = async (file: File): Promise<string> => {
     }
 
     const data = await response.json();
-    console.log('Imgur response data:', data);
 
     if (!data.success || !data.data?.link) {
       throw new Error('Invalid response from Imgur');
