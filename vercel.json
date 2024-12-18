@@ -7,6 +7,14 @@
     {
       "src": "/equipment",
       "dest": "/"
+    },
+    {
+      "src": "/login",
+      "dest": "/"
+    },
+    {
+      "src": "/signup",
+      "dest": "/"
     }
   ]
 }
