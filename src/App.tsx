@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './components/Dashboard';
 import Equipment from './components/Equipments';
 import Login from './components/Auth/Login';
+import Signup from './components/Auth/Signup';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
@@ -13,7 +14,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <Routes>
-             <Route path="/signup" element={<Login />} />
+             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route
               path="/"
