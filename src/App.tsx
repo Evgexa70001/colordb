@@ -13,6 +13,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <Routes>
+             <Route path="/signup" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route
               path="/"
