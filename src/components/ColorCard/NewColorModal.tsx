@@ -14,7 +14,7 @@ import { Dropdown } from '@/components/ui/Dropdown/Dropdown';
 // Часто используемые материалы и анилоксы
 const COMMON_MATERIALS = ['Пленка Белая', 'Бумага'];
 
-const COMMON_PAINTS = ['M', 'Y', 'C', 'K', 'Red 032', 'Radhomine', 'Tr.W'];
+const COMMON_PAINTS = ['M', 'Y', 'C', 'K', 'Tr.W', 'Red 032', 'W.Red', 'Rub.Red', 'Rhodamine', 'Purple', 'Violet', 'Blue 072', 'Ref.B', 'Green', 'Orange'];
 
 const baseClasses = {
   input: `block w-full rounded-md shadow-sm transition-colors duration-200 ease-in-out`,
