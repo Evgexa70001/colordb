@@ -446,10 +446,23 @@ export default function ColorDetailsModal({
 						</div>
 
 						<Tabs defaultValue='similar' className='w-full'>
-							<TabsList>
-								<TabsTrigger value='similar'>Похожие цвета</TabsTrigger>
-								<TabsTrigger value='recipes'>Похожие рецепты</TabsTrigger>
-								<TabsTrigger value='linked'>
+							<TabsList className='w-full flex flex-col sm:flex-row gap-2 sm:gap-0 p-1 mb-6'>
+								<TabsTrigger 
+									value='similar' 
+									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
+								>
+									Похожие цвета
+								</TabsTrigger>
+								<TabsTrigger 
+									value='recipes' 
+									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
+								>
+									Похожие рецепты
+								</TabsTrigger>
+								<TabsTrigger 
+									value='linked' 
+									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
+								>
 									<div className='flex items-center gap-2'>
 										<Link2 className='w-4 h-4' />
 										<span>Связанные цвета</span>
@@ -457,7 +470,7 @@ export default function ColorDetailsModal({
 								</TabsTrigger>
 							</TabsList>
 
-							<TabsContent value='similar'>
+							<TabsContent value='similar' className='overflow-x-hidden mt-6'>
 								<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 									{similarColors.length > 0 ? (
 										similarColors.map(similarColor => (
@@ -479,7 +492,7 @@ export default function ColorDetailsModal({
 								</div>
 							</TabsContent>
 
-							<TabsContent value='recipes'>
+							<TabsContent value='recipes' className='overflow-x-hidden mt-6'>
 								<div className='space-y-4'>
 									{similarRecipes.length > 0 ? (
 										similarRecipes.map(item => (
@@ -501,7 +514,7 @@ export default function ColorDetailsModal({
 								</div>
 							</TabsContent>
 
-							<TabsContent value='linked'>
+							<TabsContent value='linked' className='overflow-x-hidden mt-6'>
 								<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 									{color.linkedColors && color.linkedColors.length > 0 ? (
 										color.linkedColors.map(linkedId => {

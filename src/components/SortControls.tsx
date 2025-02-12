@@ -2,7 +2,7 @@ import { ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/utils/cn'
 
-type SortField = 'name' | 'inStock' | 'createdAt'
+type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
 
 interface SortControlsProps {
@@ -62,6 +62,21 @@ export default function SortControls({
 				onClick={() => onSortChange('createdAt')}
 			>
 				По дате создания
+			</Button>
+			<Button
+				variant={sortField === 'usageCount' ? 'primary' : 'secondary'}
+				justified
+				rightIcon={
+					<ChevronUp
+						className={cn(
+							'w-4 h-4 transition-transform duration-200',
+							sortField === 'usageCount' && sortOrder === 'desc' && 'rotate-180'
+						)}
+					/>
+				}
+				onClick={() => onSortChange('usageCount')}
+			>
+				По использованиям
 			</Button>
 		</div>
 	)

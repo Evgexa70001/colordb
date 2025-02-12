@@ -10,6 +10,7 @@ import {
 	Users,
 	RotateCcw,
 	Link2,
+	Search,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { useAuth } from '@contexts/AuthContext'
@@ -36,8 +37,9 @@ import toast from 'react-hot-toast'
 // import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header'
 import { DropdownSelect } from '@components/ui/DropdownSelect/DropdownSelect'
+import RecipeSearchModal from './RecipeSearch/RecipeSearchModal'
 
-type SortField = 'name' | 'inStock' | 'createdAt'
+type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
 type VerificationFilter = 'all' | 'verified' | 'unverified'
 
@@ -275,6 +277,9 @@ export default function Dashboard() {
 	const [selectedForLink, setSelectedForLink] = useState<PantoneColor | null>(
 		null
 	)
+	const [isRecipeSearchModalOpen, setIsRecipeSearchModalOpen] = useState(false)
+	const [searchResults, setSearchResults] = useState<PantoneColor[]>([])
+	const [isSearchActive, setIsSearchActive] = useState(false)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -515,8 +520,56 @@ export default function Dashboard() {
 		setVisibleCustomersCount(prev => prev + CUSTOMERS_TO_LOAD_MORE)
 	}
 
-	const filteredColors = colors
-		.filter(color => {
+	const handleRecipeSearch = (searchRecipe: { 
+		items: Array<{ paint: string; amount: number }> 
+	}) => {
+		// Calculate total amount for percentage calculation
+		const totalAmount = searchRecipe.items.reduce((sum, item) => sum + item.amount, 0)
+		
+		// Create percentages map for search recipe
+		const searchPercentages = new Map<string, number>()
+		searchRecipe.items.forEach(item => {
+			const percentage = (item.amount / totalAmount) * 100
+			searchPercentages.set(item.paint, percentage)
+		})
+
+		// Filter colors with similar recipes
+		const results = colors.filter(color => {
+			if (!color.recipe) return false
+
+			const recipes = parseRecipe(color.recipe)
+			return recipes.some(recipe => {
+				// Calculate percentages for current recipe
+				const recipePercentages = new Map<string, number>()
+				recipe.items.forEach(item => {
+					const percentage = (item.amount / recipe.totalAmount) * 100
+					recipePercentages.set(item.paint, percentage)
+				})
+
+				// Check if components match
+				const searchPaints = Array.from(searchPercentages.keys())
+				const recipePaints = recipe.items.map(item => item.paint)
+
+				if (searchPaints.length !== recipePaints.length) return false
+				if (!searchPaints.every(paint => recipePaints.includes(paint))) return false
+
+				// Check if percentages are within 1% difference
+				return searchPaints.every(paint => {
+					const searchPercentage = searchPercentages.get(paint) || 0
+					const recipePercentage = recipePercentages.get(paint) || 0
+					return Math.abs(searchPercentage - recipePercentage) <= 1
+				})
+			})
+		})
+
+		setSearchResults(results)
+		setIsSearchActive(true)
+		toast.success(`Найдено ${results.length} похожих рецептов`)
+	}
+
+	const filteredColors = isSearchActive 
+		? searchResults 
+		: colors.filter(color => {
 			const searchLower = searchTerm.toLowerCase()
 			const matchesSearch =
 				color.name.toLowerCase().includes(searchLower) ||
@@ -554,6 +607,10 @@ export default function Dashboard() {
 				const timeA = getTimestamp(a)
 				const timeB = getTimestamp(b)
 				return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
+			} else if (sortField === 'usageCount') {
+				const countA = a.usageCount || 0
+				const countB = b.usageCount || 0
+				return sortOrder === 'asc' ? countA - countB : countB - countA
 			} else {
 				return sortOrder === 'asc'
 					? Number(b.inStock) - Number(a.inStock)
@@ -611,6 +668,11 @@ export default function Dashboard() {
 			setSelectedForLink(null)
 			setIsLinkingMode(false)
 		}
+	}
+
+	const handleResetSearch = () => {
+		setIsSearchActive(false)
+		setSearchResults([])
 	}
 
 	return (
@@ -712,6 +774,26 @@ export default function Dashboard() {
 								>
 									{isLinkingMode ? 'Отменить связывание' : 'Связать цвета'}
 								</Button>
+								<Button
+									className='w-full'
+									variant='secondary'
+									leftIcon={<Search className='w-4 h-4' />}
+									onClick={() => {
+										setIsRecipeSearchModalOpen(true)
+										setSidebarOpen(false)
+									}}
+								>
+									Поиск по рецепту
+								</Button>
+								{isSearchActive && (
+									<Button
+										className='w-full'
+										variant='secondary'
+										onClick={handleResetSearch}
+									>
+										Сбросить поиск
+									</Button>
+								)}
 							</div>
 						)}
 
@@ -1058,8 +1140,21 @@ export default function Dashboard() {
 			)}
 
 			{/* Main Content */}
-			<main className='lg:pl-72 pt-20'>
+			<main className='lg:pl-72 pt-20 pb-24 sm:pb-8'>
 				<div className='max-w-7xl mx-auto px-4 sm:px-6 py-8'>
+					{isSearchActive && (
+						<div className='mb-6'>
+							<div className={`p-4 rounded-lg ${
+								isDark ? 'bg-blue-900/20' : 'bg-blue-50'
+							}`}>
+								<p className={`text-sm ${
+									isDark ? 'text-blue-200' : 'text-blue-700'
+								}`}>
+									Найдено {searchResults.length} рецептов с похожим составом
+								</p>
+							</div>
+						</div>
+					)}
 					<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6'>
 						{isLoading ? (
 							Array.from({ length: SKELETON_COUNT }).map((_, index) => (
@@ -1123,7 +1218,7 @@ export default function Dashboard() {
 
 					{/* Добавьте пагинацию */}
 					{!isLoading && filteredColors.length > 0 && (
-						<div className='mt-8 flex justify-center gap-2'>
+						<div className='mt-8 flex justify-center gap-2 mb-6'>
 							<button
 								onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
 								disabled={currentPage === 1}
@@ -1215,6 +1310,12 @@ export default function Dashboard() {
 				onClose={() => setIsNewCategoryModalOpen(false)}
 				onSave={handleAddCategory}
 				existingCategories={categories}
+			/>
+
+			<RecipeSearchModal
+				isOpen={isRecipeSearchModalOpen}
+				onClose={() => setIsRecipeSearchModalOpen(false)}
+				onSearch={handleRecipeSearch}
 			/>
 		</div>
 	)
