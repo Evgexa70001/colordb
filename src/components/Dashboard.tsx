@@ -11,6 +11,7 @@ import {
 	RotateCcw,
 	Link2,
 	Search,
+	Printer,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { useAuth } from '@contexts/AuthContext'
@@ -280,6 +281,9 @@ export default function Dashboard() {
 	const [isRecipeSearchModalOpen, setIsRecipeSearchModalOpen] = useState(false)
 	const [searchResults, setSearchResults] = useState<PantoneColor[]>([])
 	const [isSearchActive, setIsSearchActive] = useState(false)
+	const [searchRecipe, setSearchRecipe] = useState<{ 
+		items: Array<{ paint: string; amount: number }> 
+	} | null>(null)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -400,6 +404,12 @@ export default function Dashboard() {
 		}
 	}, [isVerificationDropdownOpen])
 
+	useEffect(() => {
+		if (isSearchActive && searchRecipe) {
+			handleRecipeSearch(searchRecipe)
+		}
+	}, [colors])
+
 	const loadData = async () => {
 		try {
 			setIsLoading(true)
@@ -449,11 +459,25 @@ export default function Dashboard() {
 				throw new Error('Color ID is required')
 			}
 
-			// Обновляем в базе данных
-			await updateColor(colorId, updates)
+			const finalUpdates = {
+				...updates,
+				alternativeName: updates.alternativeName === null ? '' : updates.alternativeName,
+				notes: updates.notes === null ? '' : updates.notes,
+				manager: updates.manager === null ? '' : updates.manager,
+			}
 
-			// Перезагружаем данные для получения актуального состояния
+			await updateColor(colorId, finalUpdates)
+			
+			// Перезагружаем данные
 			await loadData()
+
+			// Если активен поиск по рецепту, обновляем результаты поиска
+			if (isSearchActive && searchResults.length > 0) {
+				const updatedSearchResults = searchResults.map(color => 
+					color.id === colorId ? { ...color, ...finalUpdates } : color
+				)
+				setSearchResults(updatedSearchResults)
+			}
 
 			setIsEditModalOpen(false)
 			setSelectedColor(null)
@@ -520,40 +544,36 @@ export default function Dashboard() {
 		setVisibleCustomersCount(prev => prev + CUSTOMERS_TO_LOAD_MORE)
 	}
 
-	const handleRecipeSearch = (searchRecipe: { 
+	const handleRecipeSearch = (recipe: { 
 		items: Array<{ paint: string; amount: number }> 
 	}) => {
-		// Calculate total amount for percentage calculation
-		const totalAmount = searchRecipe.items.reduce((sum, item) => sum + item.amount, 0)
+		setSearchRecipe(recipe) // Сохраняем критерии поиска
 		
-		// Create percentages map for search recipe
+		const totalAmount = recipe.items.reduce((sum, item) => sum + item.amount, 0)
+		
 		const searchPercentages = new Map<string, number>()
-		searchRecipe.items.forEach(item => {
+		recipe.items.forEach(item => {
 			const percentage = (item.amount / totalAmount) * 100
 			searchPercentages.set(item.paint, percentage)
 		})
 
-		// Filter colors with similar recipes
 		const results = colors.filter(color => {
 			if (!color.recipe) return false
 
 			const recipes = parseRecipe(color.recipe)
 			return recipes.some(recipe => {
-				// Calculate percentages for current recipe
 				const recipePercentages = new Map<string, number>()
 				recipe.items.forEach(item => {
 					const percentage = (item.amount / recipe.totalAmount) * 100
 					recipePercentages.set(item.paint, percentage)
 				})
 
-				// Check if components match
 				const searchPaints = Array.from(searchPercentages.keys())
 				const recipePaints = recipe.items.map(item => item.paint)
 
 				if (searchPaints.length !== recipePaints.length) return false
 				if (!searchPaints.every(paint => recipePaints.includes(paint))) return false
 
-				// Check if percentages are within 1% difference
 				return searchPaints.every(paint => {
 					const searchPercentage = searchPercentages.get(paint) || 0
 					const recipePercentage = recipePercentages.get(paint) || 0
@@ -675,6 +695,95 @@ export default function Dashboard() {
 		setSearchResults([])
 	}
 
+	const handlePrintColorsList = () => {
+		const printContent = `
+			<html>
+				<head>
+					<title>Список цветов</title>
+					<style>
+						body {
+							font-family: Arial, sans-serif;
+							padding: 20px;
+							max-width: 800px;
+							margin: 0 auto;
+						}
+						h1 {
+							font-size: 24px;
+							margin-bottom: 20px;
+							color: #333;
+						}
+						table {
+							width: 100%;
+							border-collapse: collapse;
+							margin-top: 12px;
+						}
+						th, td {
+							padding: 8px 12px;
+							text-align: left;
+							border: 1px solid #e2e8f0;
+						}
+						th {
+							background-color: #f8fafc;
+							font-weight: 600;
+						}
+						.color-preview {
+							width: 20px;
+							height: 20px;
+							border: 1px solid #e2e8f0;
+							border-radius: 4px;
+							display: inline-block;
+						}
+						@media print {
+							th { background-color: #f8fafc !important; }
+						}
+					</style>
+				</head>
+				<body>
+					<h1>Список цветов</h1>
+					<table>
+						<thead>
+							<tr>
+								<th>Цвет</th>
+								<th>Название</th>
+								<th>Альтернативное название</th>
+								<th>Использований</th>
+							</tr>
+						</thead>
+						<tbody>
+							${filteredColors
+								.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+								.map(
+									color => `
+								<tr>
+									<td>
+										<div class="color-preview" style="background-color: ${color.hex}"></div>
+									</td>
+									<td>${color.name}</td>
+									<td>${color.alternativeName || '-'}</td>
+									<td>${color.usageCount || 0}</td>
+								</tr>
+							`
+								)
+								.join('')}
+						</tbody>
+					</table>
+				</body>
+			</html>
+		`
+
+		const printWindow = window.open('', '_blank')
+		if (printWindow) {
+			printWindow.document.write(printContent)
+			printWindow.document.close()
+			printWindow.focus()
+
+			setTimeout(() => {
+				printWindow.print()
+				printWindow.close()
+			}, 250)
+		}
+	}
+
 	return (
 		<div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
 			<Header onSidebarOpen={() => setSidebarOpen(true)} />
@@ -794,6 +903,17 @@ export default function Dashboard() {
 										Сбросить поиск
 									</Button>
 								)}
+								<Button
+									className='w-full'
+									variant='secondary'
+									leftIcon={<Printer className='w-4 h-4' />}
+									onClick={() => {
+										handlePrintColorsList()
+										setSidebarOpen(false)
+									}}
+								>
+									Печать списка
+								</Button>
 							</div>
 						)}
 
@@ -1278,13 +1398,10 @@ export default function Dashboard() {
 							setIsDetailsModalOpen(false)
 							setSelectedColor(null)
 						}}
-						similarColors={
-							getSimilarColors(selectedColor, colors).similarColors
-						}
-						similarRecipes={
-							getSimilarColors(selectedColor, colors).similarRecipes
-						}
+						similarColors={getSimilarColors(selectedColor, colors).similarColors}
+						similarRecipes={getSimilarColors(selectedColor, colors).similarRecipes}
 						colors={colors}
+						onUpdate={handleUpdateColor}
 					/>
 				</>
 			)}

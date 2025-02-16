@@ -290,7 +290,7 @@ export default function ColorCard({
 		}
 	}
 
-	// Функция для проверки наличия похожих рецептов
+	// Обновляем функцию hasMatchingRecipes
 	const hasMatchingRecipes = (recipe: string) => {
 		const recipes = parseRecipes(recipe)
 		return recipes.some(recipe => {
@@ -309,6 +309,13 @@ export default function ColorCard({
 			// Проверяем все другие рецепты в базе
 			const otherColors = colors.filter(c => c.id !== color.id && c.recipe)
 			return otherColors.some(otherColor => {
+				// Проверяем, не связан ли уже этот цвет
+				const isLinked = color.linkedColors?.includes(otherColor.id) || 
+								otherColor.linkedColors?.includes(color.id)
+				
+				// Если цвета уже связаны, пропускаем проверку
+				if (isLinked) return false
+
 				const otherRecipes = parseRecipes(otherColor.recipe!)
 				return otherRecipes.some(otherRecipe => {
 					// Создаем карту процентов для сравниваемого рецепта

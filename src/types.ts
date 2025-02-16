@@ -9,32 +9,34 @@ export interface User {
 export interface PantoneColor {
 	id: string
 	name: string
-	alternativeName?: string
+	alternativeName?: string | null
 	hex: string
 	category: string
 	customers?: string[]
 	inStock: boolean
 	recipe?: string
-	notes?: string
-	manager?: string
+	notes?: string | null
+	manager?: string | null
 	createdAt?: string | { seconds: number; nanoseconds: number }
 	updatedAt?: string | { seconds: number; nanoseconds: number }
 	isVerified?: boolean
 	usageCount?: number
 	linkedColors?: string[]
+	images?: string[]
 }
 
 export interface ColorData {
 	name: string
-	alternativeName?: string
+	alternativeName?: string | null
 	hex: string
 	category: string
 	recipe?: string
 	customers?: string[]
 	inStock: boolean
 	isVerified?: boolean
-	notes?: string
-	manager?: string
+	notes?: string | null
+	manager?: string | null
+	images?: string[]
 }
 
 // Modal Props

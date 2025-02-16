@@ -1,8 +1,10 @@
 import { Dialog } from '@headlessui/react'
-import { X, Beaker, UserCircle, StickyNote, Link2 } from 'lucide-react'
+import { X, Beaker, UserCircle, StickyNote, Link2, ImagePlus } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { getColorInfo, normalizeHexColor } from '@utils/colorUtils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@components/ui/Tabs'
+import { uploadToImgur } from '@lib/imgur'
+import { toast } from 'react-hot-toast'
 
 import { ColorInfo } from '../ColorDetails'
 import type { PantoneColor, Recipe } from '@/types'
@@ -22,6 +24,7 @@ interface ColorDetailsModalProps {
 		}>
 	}>
 	colors: PantoneColor[]
+	onUpdate?: (id: string, update: Partial<PantoneColor>) => Promise<void>
 }
 
 export default function ColorDetailsModal({
@@ -31,6 +34,7 @@ export default function ColorDetailsModal({
 	similarColors,
 	similarRecipes,
 	colors,
+	onUpdate,
 }: ColorDetailsModalProps) {
 	const { isDark } = useTheme()
 	const normalizedHex = normalizeHexColor(color.hex)
@@ -136,6 +140,50 @@ export default function ColorDetailsModal({
 					})}
 			</div>
 		))
+	}
+
+	const handleImageUpload = async (file: File) => {
+		try {
+			const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+			if (file.size > MAX_SIZE) {
+				toast.error('Размер файла не должен превышать 10MB')
+				return
+			}
+
+			const allowedTypes = ['image/jpeg', 'image/png']
+			if (!allowedTypes.includes(file.type)) {
+				toast.error('Поддерживаются только форматы JPG и PNG')
+				return
+			}
+
+			toast.loading('Загрузка изображения...', { id: 'uploadImage' })
+			const imageUrl = await uploadToImgur(file)
+
+			// Обновляем массив изображений
+			await onUpdate?.(color.id, {
+				images: [...(color.images || []), imageUrl]
+			})
+
+			toast.success('Изображение успешно загружено', { id: 'uploadImage' })
+		} catch (error) {
+			console.error('Ошибка при загрузке изображения:', error)
+			toast.error(
+				error instanceof Error ? error.message : 'Ошибка при загрузке изображения',
+				{ id: 'uploadImage' }
+			)
+		}
+	}
+
+	const handleRemoveImage = async (imageUrl: string) => {
+		try {
+			await onUpdate?.(color.id, {
+				images: (color.images || []).filter(url => url !== imageUrl)
+			})
+			toast.success('Изображение удалено')
+		} catch (error) {
+			console.error('Ошибка при удалении изображения:', error)
+			toast.error('Ошибка при удалении изображения')
+		}
 	}
 
 	return (
@@ -443,6 +491,72 @@ export default function ColorDetailsModal({
 							>
 								{color.inStock ? 'В наличии' : 'Нет в наличии'}
 							</span>
+						</div>
+
+						{/* Секция изображений */}
+						<div className={`p-6 rounded-xl transition-colors ${
+							isDark
+								? 'bg-gray-700/50 hover:bg-gray-700/70'
+								: 'bg-gray-50 hover:bg-gray-100/70'
+						}`}>
+							<h3 className={`text-lg font-semibold mb-4 ${
+								isDark ? 'text-gray-200' : 'text-gray-700'
+							}`}>
+								Фотографии этикеток
+							</h3>
+
+							<div className='grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4'>
+								{color.images?.map((imageUrl, index) => (
+									<div key={index} className='relative group aspect-square'>
+										<img
+											src={imageUrl}
+											alt={`Этикетка ${index + 1}`}
+											className='w-full h-full object-cover rounded-lg'
+										/>
+										{onUpdate && (
+											<button
+												onClick={() => handleRemoveImage(imageUrl)}
+												className={`absolute top-2 right-2 p-1.5 rounded-full 
+													opacity-0 group-hover:opacity-100 transition-opacity
+													${isDark ? 'bg-red-500/90' : 'bg-red-500'} 
+													text-white hover:bg-red-600`}
+											>
+												<X className='w-4 h-4' />
+											</button>
+										)}
+									</div>
+								))}
+							</div>
+
+							{onUpdate && (
+								<div className='flex items-center gap-4'>
+									<input
+										type='file'
+										accept='image/jpeg,image/png'
+										onChange={(e) => {
+											const files = e.target.files
+											if (files && files.length > 0) {
+												handleImageUpload(files[0])
+											}
+										}}
+										className={`flex-1 px-4 py-2 rounded-xl border ${
+											isDark
+												? 'bg-gray-700 border-gray-600 text-white'
+												: 'bg-white border-gray-300 text-gray-900'
+										} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+									/>
+									<button
+										onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
+										className={`p-2 rounded-lg transition-colors ${
+											isDark
+												? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+												: 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+										}`}
+									>
+										<ImagePlus className='w-5 h-5' />
+									</button>
+								</div>
+							)}
 						</div>
 
 						<Tabs defaultValue='similar' className='w-full'>

@@ -218,46 +218,28 @@ export default function NewColorModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 
-		const finalHex = normalizeHexColor(hex.trim())
-
-		const recipeString = recipes
-			.map(recipe => {
-				const lines = [
-					`Общее количество: ${recipe.totalAmount}`,
-					`Материал: ${recipe.material}`,
-				]
-
-				if (recipe.comment) {
-					lines.push(`Комментарий: ${recipe.comment}`)
-				}
-
-				recipe.items
-					.filter(item => item.paint.trim() !== '' && item.amount > 0)
-					.forEach(item => {
-						lines.push(`Краска: ${item.paint}, Количество: ${item.amount}`)
-					})
-
-				return lines.join('\n')
-			})
-			.join('\n\n')
-
-		onSave({
-			name: name.trim(),
-			alternativeName: alternativeName.trim() || undefined,
-			hex: finalHex,
+		const colorData: ColorData = {
+			name,
+			alternativeName: alternativeName.trim() || null,
+			hex: normalizeHexColor(hex),
 			category: category || UNCATEGORIZED,
-			recipe: recipeString || undefined,
 			customers: customers
 				.split(',')
 				.map(c => c.trim())
 				.filter(Boolean),
 			inStock,
 			isVerified,
-			notes: notes.trim() || undefined,
-			manager: manager.trim() || undefined,
-		})
+			notes: notes.trim() || null,
+			manager: manager.trim() || null,
+			recipe: recipes.length
+				? recipes
+						.map(recipe => formatRecipe(recipe))
+						.filter(Boolean)
+						.join('\n\n')
+				: undefined,
+		}
 
-		resetForm()
+		onSave(colorData)
 	}
 
 	// Обновленные классы для рецептов
@@ -372,6 +354,25 @@ export default function NewColorModal({
 			setHex(newHex)
 		}
 	}, [labValues, colorInputMode])
+
+	const formatRecipe = (recipe: Recipe) => {
+		const lines = [
+			`Общее количество: ${recipe.totalAmount}`,
+			`Материал: ${recipe.material}`,
+		]
+
+		if (recipe.comment) {
+			lines.push(`Комментарий: ${recipe.comment}`)
+		}
+
+		recipe.items
+			.filter(item => item.paint.trim() !== '' && item.amount > 0)
+			.forEach(item => {
+				lines.push(`Краска: ${item.paint}, Количество: ${item.amount}`)
+			})
+
+		return lines.join('\n')
+	}
 
 	return (
 		<Dialog open={isOpen} onClose={onClose} className='relative z-50'>
