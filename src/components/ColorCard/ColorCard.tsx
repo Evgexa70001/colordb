@@ -335,12 +335,12 @@ export default function ColorCard({
 						recipePaintsArray.length === otherPaintsArray.length &&
 						recipePaintsArray.every(paint => otherPaints.has(paint))
 					) {
-						// Если наборы компонентов совпадают, проверяем разницу в процентах
+						// Проверяем совпадение процентов с допуском 0.3%
 						return recipePaintsArray.every(paint => {
 							const recipePercentage = recipePercentages.get(paint) || 0
 							const otherPercentage = otherPercentages.get(paint) || 0
 							const difference = Math.abs(recipePercentage - otherPercentage)
-							return difference <= 3 // Разница не более 3%
+							return difference <= 0.3 // Допуск 0.3%
 						})
 					}
 					return false
