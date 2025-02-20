@@ -18,9 +18,10 @@ import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
 import { incrementUsageCount } from '@lib/colors'
 import toast from 'react-hot-toast'
+import { hexToLab, labToHex } from '@utils/colorUtils'
 
 interface ColorCardProps {
-	color: PantoneColor
+	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
 	colors: PantoneColor[]
 	onEdit: () => void
 	onClick: () => void
@@ -88,6 +89,7 @@ export default function ColorCard({
 			totalAmount: number
 			material: string
 			comment?: string
+			anilox?: string
 			items: Array<{ paint: string; amount: number }>
 		}> = []
 
@@ -98,6 +100,7 @@ export default function ColorCard({
 			const materialMatch = line.match(/^Материал: (.+)/)
 			const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
 			const commentMatch = line.match(/^Комментарий: (.+)/)
+			const aniloxMatch = line.match(/^Анилокс: (.+)/)
 
 			if (totalAmountMatch) {
 				if (currentRecipe) recipes.push(currentRecipe)
@@ -110,6 +113,8 @@ export default function ColorCard({
 				currentRecipe.material = materialMatch[1]
 			} else if (commentMatch && currentRecipe) {
 				currentRecipe.comment = commentMatch[1]
+			} else if (aniloxMatch && currentRecipe) {
+				currentRecipe.anilox = aniloxMatch[1]
 			} else if (paintMatch && currentRecipe) {
 				currentRecipe.items.push({
 					paint: paintMatch[1],
@@ -310,9 +315,10 @@ export default function ColorCard({
 			const otherColors = colors.filter(c => c.id !== color.id && c.recipe)
 			return otherColors.some(otherColor => {
 				// Проверяем, не связан ли уже этот цвет
-				const isLinked = color.linkedColors?.includes(otherColor.id) || 
-								otherColor.linkedColors?.includes(color.id)
-				
+				const isLinked =
+					color.linkedColors?.includes(otherColor.id) ||
+					otherColor.linkedColors?.includes(color.id)
+
 				// Если цвета уже связаны, пропускаем проверку
 				if (isLinked) return false
 
@@ -370,6 +376,33 @@ export default function ColorCard({
 		}
 	}
 
+	const calculateAniloxChange = (
+		lab: { l: number; a: number; b: number } | undefined,
+		fromAnilox: string,
+		toAnilox: string
+	) => {
+		// Используем сохраненные LAB координаты, если они есть
+		if (!lab) return null;
+		
+		const lCoefficient = 1.693;
+
+		if (fromAnilox === '500' && toAnilox === '800') {
+			return {
+				l: lab.l * lCoefficient,
+				a: lab.a,
+				b: lab.b
+			}
+		} else if (fromAnilox === '800' && toAnilox === '500') {
+			return {
+				l: lab.l / lCoefficient,
+				a: lab.a,
+				b: lab.b
+			}
+		}
+
+		return lab;
+	}
+
 	return (
 		<div
 			className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
@@ -406,7 +439,11 @@ export default function ColorCard({
 			<div
 				className='h-32 sm:h-40 relative transition-all duration-500 ease-out
         group-hover:shadow-[inset_0_-20px_30px_-10px_rgba(0,0,0,0.2)]'
-				style={{ backgroundColor: color.hex }}
+				style={{ 
+					backgroundColor: color.labValues 
+						? labToHex(color.labValues)
+						: color.hex 
+				}}
 			>
 				<div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-black/20 backdrop-blur-[2px]'>
 					<p className='text-white text-lg font-mono font-bold tracking-wider shadow-sm transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500'>
@@ -459,6 +496,7 @@ export default function ColorCard({
 					)}
 				</div>
 
+				{/* Recipe */}
 				{color.recipe &&
 					parseRecipes(color.recipe).map((recipe, index) => (
 						<div
@@ -510,11 +548,11 @@ export default function ColorCard({
 							{/* Добавляем анимацию для выпадающего списка */}
 							<div
 								className={`transform transition-all duration-300 ease-out origin-top
-                ${
-									expandedRecipes.includes(index)
-										? 'opacity-100 scale-y-100 translate-y-0'
-										: 'opacity-0 scale-y-0 -translate-y-2 h-0'
-								}`}
+									${
+										expandedRecipes.includes(index)
+											? 'opacity-100 scale-y-100 translate-y-0'
+											: 'opacity-0 scale-y-0 -translate-y-2 h-0'
+									}`}
 							>
 								{expandedRecipes.includes(index) && (
 									<div
@@ -524,6 +562,9 @@ export default function ColorCard({
 									>
 										<div className='space-y-1'>
 											<p className='font-medium'>Материал: {recipe.material}</p>
+											{recipe.anilox && (
+												<p className='font-medium'>Анилокс: {recipe.anilox}</p>
+											)}
 											{recipe.comment && (
 												<p className='mt-2 italic text-sm px-3 py-2 rounded-lg bg-blue-900/20'>
 													{recipe.comment}
@@ -555,6 +596,129 @@ export default function ColorCard({
 							</div>
 						</div>
 					))}
+
+				{/* Add new Anilox Variants section */}
+				{color.recipe && parseRecipes(color.recipe).some(recipe => recipe.anilox) && (
+					<div
+						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
+							isDark
+								? 'bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-800/30'
+								: 'bg-indigo-50/80 hover:bg-indigo-50 border border-indigo-100'
+						}`}
+					>
+						<button
+							onClick={e => {
+								e.stopPropagation()
+								setExpandedRecipes(prev =>
+									prev.includes(-1) ? prev.filter(i => i !== -1) : [...prev, -1]
+								)
+							}}
+							className='w-full relative z-10'
+						>
+							<div className='flex items-center justify-between'>
+								<div className='flex items-center gap-2'>
+									<Beaker
+										className={`w-4 h-4 ${
+											isDark ? 'text-indigo-400' : 'text-indigo-600'
+										}`}
+									/>
+									<p
+										className={`text-xs sm:text-sm font-medium ${
+											isDark ? 'text-indigo-300' : 'text-indigo-700'
+										}`}
+									>
+										Варианты анилоксов
+									</p>
+								</div>
+								{expandedRecipes.includes(-1) ? (
+									<ChevronUp
+										className={`w-4 h-4 ${
+											isDark ? 'text-indigo-400' : 'text-indigo-600'
+										}`}
+									/>
+								) : (
+									<ChevronDown
+										className={`w-4 h-4 ${
+											isDark ? 'text-indigo-400' : 'text-indigo-600'
+										}`}
+									/>
+								)}
+							</div>
+						</button>
+
+						<div
+							className={`transform transition-all duration-300 ease-out origin-top
+								${
+									expandedRecipes.includes(-1)
+										? 'opacity-100 scale-y-100 translate-y-0'
+										: 'opacity-0 scale-y-0 -translate-y-2 h-0'
+								}`}
+						>
+							{expandedRecipes.includes(-1) && (
+								<div className='mt-3 space-y-4'>
+									{parseRecipes(color.recipe).map((recipe, recipeIndex) => {
+										if (!recipe.anilox) return null;
+										
+										return (
+											<div key={recipeIndex} className='space-y-2'>
+												<p className={`text-xs font-medium ${
+													isDark ? 'text-indigo-300' : 'text-indigo-700'
+												}`}>
+													Рецепт {recipeIndex + 1} (текущий анилокс: {recipe.anilox})
+												</p>
+												<div className='grid grid-cols-2 gap-2'>
+													{['500', '800'].map(targetAnilox => {
+														if (targetAnilox === recipe.anilox) return null;
+
+														const currentLab = hexToLab(color.hex);
+														const predictedLab = calculateAniloxChange(
+															currentLab,
+															recipe.anilox!,
+															targetAnilox
+														);
+														const predictedHex = predictedLab ? labToHex(predictedLab) : color.hex;
+
+														return (
+															<div
+																key={targetAnilox}
+																className={`p-2 rounded-lg ${
+																	isDark ? 'bg-indigo-900/30' : 'bg-indigo-50'
+																}`}
+															>
+																<div className='flex items-center gap-3'>
+																	<div
+																		className='w-10 h-10 rounded border'
+																		style={{ backgroundColor: predictedHex }}
+																	/>
+																	<div className='space-y-0.5'>
+																		<p className='text-xs font-medium'>
+																			Анилокс {targetAnilox}
+																		</p>
+																		<div className='text-xs opacity-80 space-y-0.5'>
+																			{predictedLab ? (
+																				<>
+																					<div>L: {predictedLab.l.toFixed(1)}</div>
+																					<div>a: {predictedLab.a.toFixed(1)}</div>
+																					<div>b: {predictedLab.b.toFixed(1)}</div>
+																				</>
+																			) : (
+																				<div>Нет данных</div>
+																			)}
+																		</div>
+																	</div>
+																</div>
+															</div>
+														);
+													})}
+												</div>
+											</div>
+										);
+									})}
+								</div>
+							)}
+						</div>
+					</div>
+				)}
 
 				{color.customers && color.customers.length > 0 && (
 					<div

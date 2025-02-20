@@ -1,18 +1,30 @@
 import { Dialog } from '@headlessui/react'
-import { X, Beaker, UserCircle, StickyNote, Link2, ImagePlus } from 'lucide-react'
+import {
+	X,
+	Beaker,
+	UserCircle,
+	StickyNote,
+	Link2,
+	ImagePlus,
+} from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
-import { getColorInfo, normalizeHexColor } from '@utils/colorUtils'
+import {
+	getColorInfo,
+	normalizeHexColor,
+	hexToLab,
+	labToHex,
+} from '@utils/colorUtils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@components/ui/Tabs'
 import { uploadToImgur } from '@lib/imgur'
 import { toast } from 'react-hot-toast'
 
-import { ColorInfo } from '../ColorDetails'
+import ColorInfo from './ColorInfo'
 import type { PantoneColor, Recipe } from '@/types'
 import SimilarColorCard from './SimilarColorCard'
 import SimilarRecipeCard from './SimilarRecipeCard'
 
 interface ColorDetailsModalProps {
-	color: PantoneColor
+	color: PantoneColor & { labValues?: { l: number; a: number; b: number }, labSource?: 'manual' | 'converted' }
 	isOpen: boolean
 	onClose: () => void
 	similarColors: (PantoneColor & { distance?: number })[]
@@ -39,6 +51,46 @@ export default function ColorDetailsModal({
 	const { isDark } = useTheme()
 	const normalizedHex = normalizeHexColor(color.hex)
 	const colorInfo = getColorInfo(normalizedHex)
+
+	// Используем сохраненные LAB координаты, если они есть
+	const colorLab = color.labValues || hexToLab(color.hex)
+
+	const parseRecipes = (recipeString: string): Recipe[] => {
+		const lines = recipeString.split('\n')
+		const recipes: Recipe[] = []
+		let currentRecipe: Recipe | null = null
+
+		lines.forEach(line => {
+			const totalAmountMatch = line.match(/^Общее количество: (\d+)/)
+			const materialMatch = line.match(/^Материал: (.+)/)
+			const aniloxMatch = line.match(/^Анилокс: (.+)/)
+			const commentMatch = line.match(/^Комментарий: (.+)/)
+			const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
+
+			if (totalAmountMatch) {
+				if (currentRecipe) recipes.push(currentRecipe)
+				currentRecipe = {
+					totalAmount: parseInt(totalAmountMatch[1]),
+					material: '',
+					items: [],
+				}
+			} else if (materialMatch && currentRecipe) {
+				currentRecipe.material = materialMatch[1]
+			} else if (aniloxMatch && currentRecipe) {
+				currentRecipe.anilox = aniloxMatch[1]
+			} else if (commentMatch && currentRecipe) {
+				currentRecipe.comment = commentMatch[1]
+			} else if (paintMatch && currentRecipe) {
+				currentRecipe.items.push({
+					paint: paintMatch[1],
+					amount: parseInt(paintMatch[2]),
+				})
+			}
+		})
+
+		if (currentRecipe) recipes.push(currentRecipe)
+		return recipes
+	}
 
 	const formatRecipe = (recipe: string) => {
 		const lines = recipe.split('\n')
@@ -161,14 +213,16 @@ export default function ColorDetailsModal({
 
 			// Обновляем массив изображений
 			await onUpdate?.(color.id, {
-				images: [...(color.images || []), imageUrl]
+				images: [...(color.images || []), imageUrl],
 			})
 
 			toast.success('Изображение успешно загружено', { id: 'uploadImage' })
 		} catch (error) {
 			console.error('Ошибка при загрузке изображения:', error)
 			toast.error(
-				error instanceof Error ? error.message : 'Ошибка при загрузке изображения',
+				error instanceof Error
+					? error.message
+					: 'Ошибка при загрузке изображения',
 				{ id: 'uploadImage' }
 			)
 		}
@@ -177,13 +231,40 @@ export default function ColorDetailsModal({
 	const handleRemoveImage = async (imageUrl: string) => {
 		try {
 			await onUpdate?.(color.id, {
-				images: (color.images || []).filter(url => url !== imageUrl)
+				images: (color.images || []).filter(url => url !== imageUrl),
 			})
 			toast.success('Изображение удалено')
 		} catch (error) {
 			console.error('Ошибка при удалении изображения:', error)
 			toast.error('Ошибка при удалении изображения')
 		}
+	}
+
+	// При расчете изменений анилокса используем сохраненные LAB координаты
+	const calculateAniloxChange = (
+		lab: { l: number; a: number; b: number } | undefined,
+		fromAnilox: string,
+		toAnilox: string
+	) => {
+		if (!lab) return null;
+		
+		const lCoefficient = 1.693;
+
+		if (fromAnilox === '500' && toAnilox === '800') {
+			return {
+				l: lab.l * lCoefficient,
+				a: lab.a,
+				b: lab.b
+			}
+		} else if (fromAnilox === '800' && toAnilox === '500') {
+			return {
+				l: lab.l / lCoefficient,
+				a: lab.a,
+				b: lab.b
+			}
+		}
+
+		return lab;
 	}
 
 	return (
@@ -227,125 +308,122 @@ export default function ColorDetailsModal({
 								<div
 									className='w-full aspect-square rounded-xl shadow-2xl ring-4 ring-opacity-20'
 									style={{
-										backgroundColor: normalizedHex,
+										backgroundColor: color.labValues 
+											? labToHex(color.labValues)
+											: normalizedHex,
 									}}
 								/>
-								<p
-									className={`text-xl font-mono text-center font-semibold ${
-										isDark ? 'text-gray-300' : 'text-gray-600'
-									}`}
-								>
-									{normalizedHex}
-								</p>
+								<div className='space-y-2'>
+									<p
+										className={`text-xl font-mono text-center font-semibold ${
+											isDark ? 'text-gray-300' : 'text-gray-600'
+										}`}
+									>
+										{normalizedHex}
+									</p>
+								</div>
 							</div>
 
 							{/* Color Information */}
-							<ColorInfo colorInfo={colorInfo} />
+							<ColorInfo 
+								colorInfo={colorInfo} 
+								labValues={colorLab}
+								isLabManual={color.labSource === 'manual'}
+							/>
 						</div>
 
-						{/* Flexo Print Preview */}
-						<div className='space-y-3 mt-6'>
+						{/* Recipe Anilox Change Prediction */}
+						{color.recipe &&
+							parseRecipes(color.recipe).map((recipe, index) => (
+								<div key={index}>
+									{recipe.anilox && (
+										<div
+											className={`p-4 rounded-xl ${
+												isDark ? 'bg-indigo-900/20' : 'bg-indigo-50'
+											}`}
+										>
+											<h4 className='text-sm font-medium mb-2'>
+												Прогноз изменения цвета при смене анилокса
+											</h4>
+											<div className='grid grid-cols-2 gap-4'>
+												{['500', '800'].map(targetAnilox => {
+													if (targetAnilox === recipe.anilox) return null
+													if (!recipe.anilox) return null
+
+													const currentLab = colorLab
+													const predictedLab = calculateAniloxChange(
+														currentLab,
+														recipe.anilox,
+														targetAnilox
+													)
+													const predictedHex = predictedLab ? labToHex(predictedLab) : color.hex
+
+													return (
+														<div
+															key={targetAnilox}
+															className='flex items-center gap-3'
+														>
+															<div
+																className='w-16 h-16 rounded-lg border'
+																style={{ backgroundColor: predictedHex }}
+															/>
+															<div>
+																<p className='text-sm font-medium'>
+																	Анилокс {targetAnilox}
+																</p>
+																<p className='text-xs'>
+																	{predictedLab ? (
+																		<>
+																			L: {predictedLab.l.toFixed(2)}, a:{' '}
+																			{predictedLab.a.toFixed(2)}, b:{' '}
+																			{predictedLab.b.toFixed(2)}
+																		</>
+																	) : (
+																		'Нет данных'
+																	)}
+																</p>
+															</div>
+														</div>
+													)
+												})}
+											</div>
+										</div>
+									)}
+								</div>
+							))}
+
+						{/* Category */}
+						<div
+							className={`p-6 rounded-xl transition-colors ${
+								isDark
+									? 'bg-gray-700/50 hover:bg-gray-700/70'
+									: 'bg-gray-50 hover:bg-gray-100/70'
+							}`}
+						>
 							<h3
-								className={`text-lg font-semibold ${
+								className={`text-lg font-semibold mb-3 ${
 									isDark ? 'text-gray-200' : 'text-gray-700'
 								}`}
 							>
-								Примерная визуализация
+								Категория
 							</h3>
-							<div className='grid grid-cols-2 gap-4'>
-								{/* Paper Preview */}
-								<div className='space-y-2'>
-									<div
-										className='h-20 rounded-lg'
-										style={{
-											backgroundColor: '#eeeeff', // Цвет бумаги
-											position: 'relative',
-											overflow: 'hidden',
-										}}
-									>
-										<div
-											className='absolute inset-0'
-											style={{
-												backgroundColor: normalizedHex,
-												opacity: 0.85, // Имитация печати на бумаге
-												mixBlendMode: 'multiply',
-											}}
-										/>
-									</div>
-									<p
-										className={`text-sm text-center ${
-											isDark ? 'text-gray-400' : 'text-gray-600'
-										}`}
-									>
-										На бумаге
-									</p>
-								</div>
-
-								{/* White Film Preview */}
-								<div className='space-y-2'>
-									<div
-										className='h-20 rounded-lg'
-										style={{
-											backgroundColor: '#FFFFFF', // Белая пленка
-											position: 'relative',
-											overflow: 'hidden',
-										}}
-									>
-										<div
-											className='absolute inset-0'
-											style={{
-												backgroundColor: normalizedHex,
-												opacity: 0.9, // Имитация печати на пленке
-												mixBlendMode: 'multiply',
-											}}
-										/>
-									</div>
-									<p
-										className={`text-sm text-center ${
-											isDark ? 'text-gray-400' : 'text-gray-600'
-										}`}
-									>
-										На белой пленке
-									</p>
-								</div>
-							</div>
-						</div>
-
-						{/* Category and Group */}
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-							{/* Category */}
-							<div
-								className={`p-6 rounded-xl transition-colors ${
-									isDark
-										? 'bg-gray-700/50 hover:bg-gray-700/70'
-										: 'bg-gray-50 hover:bg-gray-100/70'
-								}`}
+							<p
+								className={`${
+									isDark ? 'text-gray-300' : 'text-gray-600'
+								} text-lg`}
 							>
-								<h3
-									className={`text-lg font-semibold mb-3 ${
-										isDark ? 'text-gray-200' : 'text-gray-700'
-									}`}
-								>
-									Категория
-								</h3>
-								<p
-									className={`${
-										isDark ? 'text-gray-300' : 'text-gray-600'
-									} text-lg`}
-								>
-									{color.category}
-								</p>
-							</div>
+								{color.category}
+							</p>
 						</div>
 
 						{/* Recipe */}
-						{color.recipe && formatRecipe(color.recipe).length > 0 && (
+						{color.recipe && (
 							<div
-								className={`p-6 rounded-xl ${
+								className={`p-6 rounded-xl transition-colors ${
 									isDark
 										? 'bg-blue-900/20 hover:bg-blue-900/30'
 										: 'bg-blue-50 hover:bg-blue-100/70'
-								} transition-colors`}
+								}`}
 							>
 								<div className='flex items-center gap-3 mb-4'>
 									<Beaker
@@ -358,16 +436,10 @@ export default function ColorDetailsModal({
 											isDark ? 'text-blue-300' : 'text-blue-700'
 										}`}
 									>
-										Рецепты:
+										Рецепт:
 									</p>
 								</div>
-								<div
-									className={`text-base ${
-										isDark ? 'text-blue-200' : 'text-blue-800'
-									}`}
-								>
-									{formatRecipe(color.recipe)}
-								</div>
+								{formatRecipe(color.recipe)}
 							</div>
 						)}
 
@@ -494,14 +566,18 @@ export default function ColorDetailsModal({
 						</div>
 
 						{/* Секция изображений */}
-						<div className={`p-6 rounded-xl transition-colors ${
-							isDark
-								? 'bg-gray-700/50 hover:bg-gray-700/70'
-								: 'bg-gray-50 hover:bg-gray-100/70'
-						}`}>
-							<h3 className={`text-lg font-semibold mb-4 ${
-								isDark ? 'text-gray-200' : 'text-gray-700'
-							}`}>
+						<div
+							className={`p-6 rounded-xl transition-colors ${
+								isDark
+									? 'bg-gray-700/50 hover:bg-gray-700/70'
+									: 'bg-gray-50 hover:bg-gray-100/70'
+							}`}
+						>
+							<h3
+								className={`text-lg font-semibold mb-4 ${
+									isDark ? 'text-gray-200' : 'text-gray-700'
+								}`}
+							>
 								Фотографии этикеток
 							</h3>
 
@@ -533,7 +609,7 @@ export default function ColorDetailsModal({
 									<input
 										type='file'
 										accept='image/jpeg,image/png'
-										onChange={(e) => {
+										onChange={e => {
 											const files = e.target.files
 											if (files && files.length > 0) {
 												handleImageUpload(files[0])
@@ -546,7 +622,13 @@ export default function ColorDetailsModal({
 										} focus:outline-none focus:ring-2 focus:ring-blue-500`}
 									/>
 									<button
-										onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
+										onClick={() =>
+											(
+												document.querySelector(
+													'input[type="file"]'
+												) as HTMLInputElement
+											)?.click()
+										}
 										className={`p-2 rounded-lg transition-colors ${
 											isDark
 												? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
@@ -561,20 +643,20 @@ export default function ColorDetailsModal({
 
 						<Tabs defaultValue='similar' className='w-full'>
 							<TabsList className='w-full flex flex-col sm:flex-row gap-2 sm:gap-0 p-1 mb-6'>
-								<TabsTrigger 
-									value='similar' 
+								<TabsTrigger
+									value='similar'
 									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
 								>
 									Похожие цвета
 								</TabsTrigger>
-								<TabsTrigger 
-									value='recipes' 
+								<TabsTrigger
+									value='recipes'
 									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
 								>
 									Похожие рецепты
 								</TabsTrigger>
-								<TabsTrigger 
-									value='linked' 
+								<TabsTrigger
+									value='linked'
 									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
 								>
 									<div className='flex items-center gap-2'>

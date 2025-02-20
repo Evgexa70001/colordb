@@ -23,6 +23,12 @@ export interface PantoneColor {
 	usageCount?: number
 	linkedColors?: string[]
 	images?: string[]
+	labValues?: {
+		l: number
+		a: number
+		b: number
+	}
+	labSource?: 'manual' | 'converted'
 }
 
 export interface ColorData {
@@ -37,6 +43,8 @@ export interface ColorData {
 	notes?: string | null
 	manager?: string | null
 	images?: string[]
+	labValues?: { l: number; a: number; b: number }
+	labSource?: 'manual' | 'converted'
 }
 
 // Modal Props
@@ -75,14 +83,10 @@ export interface ColorDetailsModalProps {
 export interface Recipe {
 	totalAmount: number
 	material: string
-	anilox?: string
 	comment?: string
-	items: RecipeItem[]
-}
-
-export interface RecipeItem {
-	paint: string
-	amount: number
+	name?: string
+	anilox?: string
+	items: { paint: string; amount: number }[]
 }
 
 // Color info types

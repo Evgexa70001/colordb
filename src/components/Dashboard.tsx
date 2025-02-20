@@ -12,6 +12,7 @@ import {
 	Link2,
 	Search,
 	Printer,
+	Beaker,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { useAuth } from '@contexts/AuthContext'
@@ -32,13 +33,20 @@ import {
 	unlinkColors,
 } from '@lib/colors'
 import { getCategories, addCategory, deleteCategory } from '@lib/categories'
-import { getColorDistance, isValidHexColor } from '@utils/colorUtils'
+import {
+	getColorDistance,
+	isValidHexColor,
+	hexToLab,
+	calculateLabDistance,
+	calculateAniloxChange,
+} from '@utils/colorUtils'
 import type { PantoneColor } from '@/types'
 import toast from 'react-hot-toast'
 // import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header'
 import { DropdownSelect } from '@components/ui/DropdownSelect/DropdownSelect'
 import RecipeSearchModal from './RecipeSearch/RecipeSearchModal'
+import LABSearchModal from './LABSearch/LABSearchModal'
 
 type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
@@ -281,9 +289,10 @@ export default function Dashboard() {
 	const [isRecipeSearchModalOpen, setIsRecipeSearchModalOpen] = useState(false)
 	const [searchResults, setSearchResults] = useState<PantoneColor[]>([])
 	const [isSearchActive, setIsSearchActive] = useState(false)
-	const [searchRecipe, setSearchRecipe] = useState<{ 
-		items: Array<{ paint: string; amount: number }> 
+	const [searchRecipe, setSearchRecipe] = useState<{
+		items: Array<{ paint: string; amount: number }>
 	} | null>(null)
+	const [isLABSearchModalOpen, setIsLABSearchModalOpen] = useState(false)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -461,19 +470,20 @@ export default function Dashboard() {
 
 			const finalUpdates = {
 				...updates,
-				alternativeName: updates.alternativeName === null ? '' : updates.alternativeName,
+				alternativeName:
+					updates.alternativeName === null ? '' : updates.alternativeName,
 				notes: updates.notes === null ? '' : updates.notes,
 				manager: updates.manager === null ? '' : updates.manager,
 			}
 
 			await updateColor(colorId, finalUpdates)
-			
+
 			// Перезагружаем данные
 			await loadData()
 
 			// Если активен поиск по рецепту, обновляем результаты поиска
 			if (isSearchActive && searchResults.length > 0) {
-				const updatedSearchResults = searchResults.map(color => 
+				const updatedSearchResults = searchResults.map(color =>
 					color.id === colorId ? { ...color, ...finalUpdates } : color
 				)
 				setSearchResults(updatedSearchResults)
@@ -544,13 +554,13 @@ export default function Dashboard() {
 		setVisibleCustomersCount(prev => prev + CUSTOMERS_TO_LOAD_MORE)
 	}
 
-	const handleRecipeSearch = (recipe: { 
-		items: Array<{ paint: string; amount: number }> 
+	const handleRecipeSearch = (recipe: {
+		items: Array<{ paint: string; amount: number }>
 	}) => {
 		setSearchRecipe(recipe) // Сохраняем критерии поиска
-		
+
 		const totalAmount = recipe.items.reduce((sum, item) => sum + item.amount, 0)
-		
+
 		const searchPercentages = new Map<string, number>()
 		recipe.items.forEach(item => {
 			const percentage = (item.amount / totalAmount) * 100
@@ -572,7 +582,8 @@ export default function Dashboard() {
 				const recipePaints = recipe.items.map(item => item.paint)
 
 				if (searchPaints.length !== recipePaints.length) return false
-				if (!searchPaints.every(paint => recipePaints.includes(paint))) return false
+				if (!searchPaints.every(paint => recipePaints.includes(paint)))
+					return false
 
 				return searchPaints.every(paint => {
 					const searchPercentage = searchPercentages.get(paint) || 0
@@ -587,56 +598,107 @@ export default function Dashboard() {
 		toast.success(`Найдено ${results.length} похожих рецептов`)
 	}
 
-	const filteredColors = isSearchActive 
-		? searchResults 
-		: colors.filter(color => {
-			const searchLower = searchTerm.toLowerCase()
-			const matchesSearch =
-				color.name.toLowerCase().includes(searchLower) ||
-				color.alternativeName?.toLowerCase().includes(searchLower) ||
-				false ||
-				color.hex.toLowerCase().includes(searchLower) ||
-				color.customers?.some(customer =>
-					customer.toLowerCase().includes(searchLower)
-				) ||
-				false
-			const matchesCategory =
-				selectedCategory === 'all' || color.category === selectedCategory
-			const matchesCustomer =
-				selectedCustomer === 'all' ||
-				color.customers?.includes(selectedCustomer) ||
-				false
-			const matchesVerification =
-				verificationFilter === 'all' ||
-				(verificationFilter === 'verified' && color.isVerified) ||
-				(verificationFilter === 'unverified' && !color.isVerified)
+	const handleLABSearch = (searchLab: { l: number; a: number; b: number }) => {
+		const LAB_TOLERANCE = 5;
 
-			return (
-				matchesSearch &&
-				matchesCategory &&
-				matchesCustomer &&
-				matchesVerification
-			)
-		})
-		.sort((a, b) => {
-			if (sortField === 'name') {
-				return sortOrder === 'asc'
-					? a.name.localeCompare(b.name)
-					: b.name.localeCompare(a.name)
-			} else if (sortField === 'createdAt') {
-				const timeA = getTimestamp(a)
-				const timeB = getTimestamp(b)
-				return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
-			} else if (sortField === 'usageCount') {
-				const countA = a.usageCount || 0
-				const countB = b.usageCount || 0
-				return sortOrder === 'asc' ? countA - countB : countB - countA
-			} else {
-				return sortOrder === 'asc'
-					? Number(b.inStock) - Number(a.inStock)
-					: Number(a.inStock) - Number(b.inStock)
+		const results = colors.filter(color => {
+			// First check saved LAB values if they exist
+			if (color.labValues) {
+				const savedLabDistance = calculateLabDistance(searchLab, color.labValues)
+				// Изменяем проверку на диапазон ±5 единиц
+				if (Math.abs(savedLabDistance) <= LAB_TOLERANCE) return true
 			}
+
+			// Then check converted LAB values from HEX
+			const colorLab = color.labValues || hexToLab(color.hex)
+			let baseDistance = calculateLabDistance(searchLab, colorLab)
+			// Изменяем проверку на диапазон ±5 единиц
+			if (Math.abs(baseDistance) <= LAB_TOLERANCE) return true
+
+			// Finally check anilox variations
+			if (color.recipe) {
+				const recipes = parseRecipe(color.recipe)
+				return recipes.some(recipe => {
+					if (!recipe.anilox) return false
+
+					const aniloxValues = ['500', '800']
+					return aniloxValues.some(targetAnilox => {
+						if (targetAnilox === recipe.anilox) return false
+						
+						const predictedLab = recipe.anilox ? calculateAniloxChange(
+							colorLab,
+							recipe.anilox,
+							targetAnilox
+						) : null
+						if (!predictedLab) return false
+
+						const distance = calculateLabDistance(searchLab, predictedLab)
+						
+						// Изменяем проверку на диапазон ±5 единиц
+						return Math.abs(distance) <= LAB_TOLERANCE
+					})
+				})
+			}
+
+			return false
 		})
+
+		setSearchResults(results)
+		setIsSearchActive(true)
+		toast.success(`Найдено ${results.length} похожих цветов`)
+	}
+
+	const filteredColors = isSearchActive
+		? searchResults
+		: colors
+				.filter(color => {
+					const searchLower = searchTerm.toLowerCase()
+					const matchesSearch =
+						color.name.toLowerCase().includes(searchLower) ||
+						color.alternativeName?.toLowerCase().includes(searchLower) ||
+						false ||
+						color.hex.toLowerCase().includes(searchLower) ||
+						color.customers?.some(customer =>
+							customer.toLowerCase().includes(searchLower)
+						) ||
+						false
+					const matchesCategory =
+						selectedCategory === 'all' || color.category === selectedCategory
+					const matchesCustomer =
+						selectedCustomer === 'all' ||
+						color.customers?.includes(selectedCustomer) ||
+						false
+					const matchesVerification =
+						verificationFilter === 'all' ||
+						(verificationFilter === 'verified' && color.isVerified) ||
+						(verificationFilter === 'unverified' && !color.isVerified)
+
+					return (
+						matchesSearch &&
+						matchesCategory &&
+						matchesCustomer &&
+						matchesVerification
+					)
+				})
+				.sort((a, b) => {
+					if (sortField === 'name') {
+						return sortOrder === 'asc'
+							? a.name.localeCompare(b.name)
+							: b.name.localeCompare(a.name)
+					} else if (sortField === 'createdAt') {
+						const timeA = getTimestamp(a)
+						const timeB = getTimestamp(b)
+						return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
+					} else if (sortField === 'usageCount') {
+						const countA = a.usageCount || 0
+						const countB = b.usageCount || 0
+						return sortOrder === 'asc' ? countA - countB : countB - countA
+					} else {
+						return sortOrder === 'asc'
+							? Number(b.inStock) - Number(a.inStock)
+							: Number(a.inStock) - Number(b.inStock)
+					}
+				})
 
 	const paginatedColors = filteredColors.slice(
 		(currentPage - 1) * ITEMS_PER_PAGE,
@@ -882,6 +944,17 @@ export default function Dashboard() {
 									className='w-full'
 								>
 									{isLinkingMode ? 'Отменить связывание' : 'Связать цвета'}
+								</Button>
+								<Button
+									className='w-full'
+									variant='secondary'
+									leftIcon={<Beaker className='w-4 h-4' />}
+									onClick={() => {
+										setIsLABSearchModalOpen(true)
+										setSidebarOpen(false)
+									}}
+								>
+									Поиск по LAB
 								</Button>
 								<Button
 									className='w-full'
@@ -1264,12 +1337,16 @@ export default function Dashboard() {
 				<div className='max-w-7xl mx-auto px-4 sm:px-6 py-8'>
 					{isSearchActive && (
 						<div className='mb-6'>
-							<div className={`p-4 rounded-lg ${
-								isDark ? 'bg-blue-900/20' : 'bg-blue-50'
-							}`}>
-								<p className={`text-sm ${
-									isDark ? 'text-blue-200' : 'text-blue-700'
-								}`}>
+							<div
+								className={`p-4 rounded-lg ${
+									isDark ? 'bg-blue-900/20' : 'bg-blue-50'
+								}`}
+							>
+								<p
+									className={`text-sm ${
+										isDark ? 'text-blue-200' : 'text-blue-700'
+									}`}
+								>
 									Найдено {searchResults.length} рецептов с похожим составом
 								</p>
 							</div>
@@ -1398,8 +1475,12 @@ export default function Dashboard() {
 							setIsDetailsModalOpen(false)
 							setSelectedColor(null)
 						}}
-						similarColors={getSimilarColors(selectedColor, colors).similarColors}
-						similarRecipes={getSimilarColors(selectedColor, colors).similarRecipes}
+						similarColors={
+							getSimilarColors(selectedColor, colors).similarColors
+						}
+						similarRecipes={
+							getSimilarColors(selectedColor, colors).similarRecipes
+						}
 						colors={colors}
 						onUpdate={handleUpdateColor}
 					/>
@@ -1433,6 +1514,12 @@ export default function Dashboard() {
 				isOpen={isRecipeSearchModalOpen}
 				onClose={() => setIsRecipeSearchModalOpen(false)}
 				onSearch={handleRecipeSearch}
+			/>
+
+			<LABSearchModal
+				isOpen={isLABSearchModalOpen}
+				onClose={() => setIsLABSearchModalOpen(false)}
+				onSearch={handleLABSearch}
 			/>
 		</div>
 	)

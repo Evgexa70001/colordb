@@ -37,6 +37,9 @@ const COMMON_PAINTS = [
 	'Orange',
 ]
 
+// Добавим список часто используемых анилоксов
+const COMMON_ANILOX = ['500', '800']
+
 const baseClasses = {
 	input: `block w-full rounded-md shadow-sm transition-colors duration-200 ease-in-out`,
 	button: `transition-colors duration-200 ease-in-out rounded-md font-medium w-full flex items-center justify-center gap-2`,
@@ -80,6 +83,7 @@ const themeClasses = {
 interface Recipe {
 	totalAmount: number
 	material: string
+	anilox?: string // Добавляем поле анилокса
 	comment?: string
 	items: {
 		paint: string
@@ -128,6 +132,8 @@ export default function NewColorModal({
 		setName('')
 		setAlternativeName('')
 		setHex('#')
+		setColorInputMode('hex')
+		setLabValues({ l: '0', a: '0', b: '0' })
 		setCustomers('')
 		setInStock(false)
 		setIsVerified(false)
@@ -135,8 +141,6 @@ export default function NewColorModal({
 		setNotes('')
 		setManager('')
 		setRecipes([])
-		setColorInputMode('hex')
-		setLabValues({ l: '0', a: '0', b: '0' })
 	}
 
 	const addRecipe = () => {
@@ -221,7 +225,21 @@ export default function NewColorModal({
 		const colorData: ColorData = {
 			name,
 			alternativeName: alternativeName.trim() || null,
-			hex: normalizeHexColor(hex),
+			// Сохраняем LAB значения и их источник в зависимости от режима ввода
+			labValues: {
+				l: parseFloat(labValues.l),
+				a: parseFloat(labValues.a),
+				b: parseFloat(labValues.b)
+			},
+			labSource: colorInputMode === 'lab' ? 'manual' : 'converted',
+			// Если в режиме LAB, генерируем HEX из LAB, иначе используем введенный HEX
+			hex: colorInputMode === 'lab' 
+				? labToHex({
+						l: parseFloat(labValues.l),
+						a: parseFloat(labValues.a),
+						b: parseFloat(labValues.b)
+					})
+				: normalizeHexColor(hex),
 			category: category || UNCATEGORIZED,
 			customers: customers
 				.split(',')
@@ -241,6 +259,30 @@ export default function NewColorModal({
 
 		onSave(colorData)
 	}
+
+	// Обновляем useEffect для синхронизации значений
+	useEffect(() => {
+		if (colorInputMode === 'hex' && isValidHexColor(hex)) {
+			const labFromHex = hexToLab(hex)
+			setLabValues({
+				l: labFromHex.l.toFixed(2),
+				a: labFromHex.a.toFixed(2),
+				b: labFromHex.b.toFixed(2),
+			})
+		} else if (colorInputMode === 'lab') {
+			// В режиме LAB обновляем HEX на основе LAB значений
+			try {
+				const newHex = labToHex({
+					l: parseFloat(labValues.l) || 0,
+					a: parseFloat(labValues.a) || 0,
+					b: parseFloat(labValues.b) || 0,
+				})
+				setHex(newHex)
+			} catch (error) {
+				console.error('Error converting LAB to HEX:', error)
+			}
+		}
+	}, [hex, colorInputMode, labValues])
 
 	// Обновленные классы для рецептов
 	const recipeClasses = `p-4 rounded-lg mb-4 ${
@@ -275,13 +317,32 @@ export default function NewColorModal({
 				// Если есть начальные данные, заполняем форму
 				setName(initialData.name)
 				setAlternativeName(initialData.alternativeName || '')
-				setHex(initialData.hex)
+				
+				// Если есть LAB значения, используем их как первичный источник
+				if (initialData.labValues) {
+					setColorInputMode('lab')
+					setLabValues({
+						l: initialData.labValues.l.toFixed(2),
+						a: initialData.labValues.a.toFixed(2),
+						b: initialData.labValues.b.toFixed(2)
+					})
+					// HEX генерируем из LAB
+					setHex(labToHex(initialData.labValues))
+				} else {
+					setColorInputMode('hex')
+					setHex(initialData.hex)
+					const labFromHex = hexToLab(initialData.hex)
+					setLabValues({
+						l: labFromHex.l.toFixed(2),
+						a: labFromHex.a.toFixed(2),
+						b: labFromHex.b.toFixed(2)
+					})
+				}
+
 				setCustomers(initialData.customers?.join(', ') || '')
 				setInStock(initialData.inStock)
 				setIsVerified(initialData.isVerified || false)
-				setCategory(
-					initialData.category === UNCATEGORIZED ? '' : initialData.category
-				)
+				setCategory(initialData.category === UNCATEGORIZED ? '' : initialData.category)
 				setNotes(initialData.notes || '')
 				setManager(initialData.manager || '')
 
@@ -294,6 +355,7 @@ export default function NewColorModal({
 					lines.forEach((line: string) => {
 						const totalAmountMatch = line.match(/^Общее количество: (\d+)/)
 						const materialMatch = line.match(/^Материал: (.+)/)
+						const aniloxMatch = line.match(/^Анилокс: (.+)/)
 						const commentMatch = line.match(/^Комментарий: (.+)/)
 						const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
 
@@ -304,10 +366,13 @@ export default function NewColorModal({
 							currentRecipe = {
 								totalAmount: parseInt(totalAmountMatch[1]),
 								material: '',
+								anilox: '',
 								items: [],
 							}
 						} else if (materialMatch && currentRecipe) {
 							currentRecipe.material = materialMatch[1]
+						} else if (aniloxMatch && currentRecipe) {
+							currentRecipe.anilox = aniloxMatch[1]
 						} else if (commentMatch && currentRecipe) {
 							currentRecipe.comment = commentMatch[1]
 						} else if (paintMatch && currentRecipe) {
@@ -325,41 +390,20 @@ export default function NewColorModal({
 					setRecipes(parsedRecipes)
 				}
 			} else {
-				// Если начальных данных нет, сбрасываем форму
 				resetForm()
 			}
 		}
 	}, [isOpen, initialData])
-
-	// Update LAB values when hex changes
-	useEffect(() => {
-		if (colorInputMode === 'hex' && isValidHexColor(hex)) {
-			const { l, a, b } = hexToLab(hex)
-			setLabValues({
-				l: l.toFixed(2),
-				a: a.toFixed(2),
-				b: b.toFixed(2),
-			})
-		}
-	}, [hex, colorInputMode])
-
-	// Update hex when LAB values change
-	useEffect(() => {
-		if (colorInputMode === 'lab') {
-			const newHex = labToHex({
-				l: parseFloat(labValues.l),
-				a: parseFloat(labValues.a),
-				b: parseFloat(labValues.b),
-			})
-			setHex(newHex)
-		}
-	}, [labValues, colorInputMode])
 
 	const formatRecipe = (recipe: Recipe) => {
 		const lines = [
 			`Общее количество: ${recipe.totalAmount}`,
 			`Материал: ${recipe.material}`,
 		]
+
+		if (recipe.anilox) {
+			lines.push(`Анилокс: ${recipe.anilox}`)
+		}
 
 		if (recipe.comment) {
 			lines.push(`Комментарий: ${recipe.comment}`)
@@ -485,40 +529,40 @@ export default function NewColorModal({
 										<Input
 											id='lab-l'
 											value={labValues.l}
-											onChange={e =>
-												setLabValues(prev => ({ ...prev, l: e.target.value }))
-											}
+											onChange={e => {
+												const value = e.target.value.replace(',', '.');
+												setLabValues(prev => ({ ...prev, l: value }));
+											}}
 											required
-											type='number'
-											step='0.01'
-											min='0'
-											max='100'
+											type='text'
+											inputMode='numeric'
+											pattern='-?[0-9]*\.?[0-9]*'
 											label='L'
 										/>
 										<Input
 											id='lab-a'
 											value={labValues.a}
-											onChange={e =>
-												setLabValues(prev => ({ ...prev, a: e.target.value }))
-											}
+											onChange={e => {
+												const value = e.target.value.replace(',', '.');
+												setLabValues(prev => ({ ...prev, a: value }));
+											}}
 											required
-											type='number'
-											step='0.01'
-											min='-128'
-											max='127'
+											type='text'
+											inputMode='numeric'
+											pattern='-?[0-9]*\.?[0-9]*'
 											label='a'
 										/>
 										<Input
 											id='lab-b'
 											value={labValues.b}
-											onChange={e =>
-												setLabValues(prev => ({ ...prev, b: e.target.value }))
-											}
+											onChange={e => {
+												const value = e.target.value.replace(',', '.');
+												setLabValues(prev => ({ ...prev, b: value }));
+											}}
 											required
-											type='number'
-											step='0.01'
-											min='-128'
-											max='127'
+											type='text'
+											inputMode='numeric'
+											pattern='-?[0-9]*\.?[0-9]*'
 											label='b'
 										/>
 									</div>
@@ -648,13 +692,39 @@ export default function NewColorModal({
 																value={recipe.material}
 																label='Материал'
 																rightElement={
-																	<ChevronDown
-																		className={`w-4 h-4 transform transition-transform duration-200`}
-																	/>
+																	<ChevronDown className='w-4 h-4' />
 																}
 																onChange={e => {
 																	updateRecipe(recipeIndex, {
 																		material: e.target.value,
+																	})
+																}}
+															/>
+														}
+													/>
+												</div>
+												<div className='relative'>
+													<Dropdown
+														items={COMMON_ANILOX}
+														value={recipe.anilox || ''}
+														onChange={value =>
+															updateRecipe(recipeIndex, {
+																anilox: value,
+															})
+														}
+														placeholder='Выберите анилокс'
+														triggerComponent={
+															<Input
+																id='anilox'
+																type='text'
+																value={recipe.anilox || ''}
+																label='Анилокс'
+																rightElement={
+																	<ChevronDown className='w-4 h-4' />
+																}
+																onChange={e => {
+																	updateRecipe(recipeIndex, {
+																		anilox: e.target.value,
 																	})
 																}}
 															/>

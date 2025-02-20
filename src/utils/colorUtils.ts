@@ -312,3 +312,43 @@ export function hexToLab(hex: string): LAB {
 	const [l, a, b] = rgbToLab(...rgb)
 	return { l, a, b }
 }
+
+export function calculateLabDistance(
+	lab1: { l: number; a: number; b: number },
+	lab2: { l: number; a: number; b: number }
+): number {
+	const deltaL = lab1.l - lab2.l
+	const deltaA = lab1.a - lab2.a
+	const deltaB = lab1.b - lab2.b
+
+	return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB)
+}
+
+export function calculateAniloxChange(
+	lab: { l: number; a: number; b: number },
+	fromAnilox: string,
+	toAnilox: string
+): { l: number; a: number; b: number } {
+	// Коэффициенты изменения при переходе с 500 на 800
+	const coefficients = {
+		l: 1.693,
+		a: 1.196,
+		b: 1.097,
+	}
+
+	if (fromAnilox === '500' && toAnilox === '800') {
+		return {
+			l: lab.l * coefficients.l,
+			a: lab.a * coefficients.a,
+			b: lab.b * coefficients.b,
+		}
+	} else if (fromAnilox === '800' && toAnilox === '500') {
+		return {
+			l: lab.l / coefficients.l,
+			a: lab.a / coefficients.a,
+			b: lab.b / coefficients.b,
+		}
+	}
+
+	return lab
+}
