@@ -18,7 +18,7 @@ import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
 import { incrementUsageCount } from '@lib/colors'
 import toast from 'react-hot-toast'
-import { hexToLab, labToHex } from '@utils/colorUtils'
+import { labToHex } from '@utils/colorUtils'
 
 interface ColorCardProps {
 	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
@@ -76,6 +76,7 @@ export default function ColorCard({
 }: ColorCardProps) {
 	const { isDark } = useTheme()
 	const [expandedRecipes, setExpandedRecipes] = useState<number[]>([])
+	const [expandedAdditionalColors, setExpandedAdditionalColors] = useState(false)
 
 	const toggleRecipe = (index: number) => {
 		setExpandedRecipes(prev =>
@@ -376,33 +377,6 @@ export default function ColorCard({
 		}
 	}
 
-	const calculateAniloxChange = (
-		lab: { l: number; a: number; b: number } | undefined,
-		fromAnilox: string,
-		toAnilox: string
-	) => {
-		// Используем сохраненные LAB координаты, если они есть
-		if (!lab) return null;
-		
-		const lCoefficient = 1.693;
-
-		if (fromAnilox === '500' && toAnilox === '800') {
-			return {
-				l: lab.l * lCoefficient,
-				a: lab.a,
-				b: lab.b
-			}
-		} else if (fromAnilox === '800' && toAnilox === '500') {
-			return {
-				l: lab.l / lCoefficient,
-				a: lab.a,
-				b: lab.b
-			}
-		}
-
-		return lab;
-	}
-
 	return (
 		<div
 			className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
@@ -597,129 +571,6 @@ export default function ColorCard({
 						</div>
 					))}
 
-				{/* Add new Anilox Variants section */}
-				{color.recipe && parseRecipes(color.recipe).some(recipe => recipe.anilox) && (
-					<div
-						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-							isDark
-								? 'bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-800/30'
-								: 'bg-indigo-50/80 hover:bg-indigo-50 border border-indigo-100'
-						}`}
-					>
-						<button
-							onClick={e => {
-								e.stopPropagation()
-								setExpandedRecipes(prev =>
-									prev.includes(-1) ? prev.filter(i => i !== -1) : [...prev, -1]
-								)
-							}}
-							className='w-full relative z-10'
-						>
-							<div className='flex items-center justify-between'>
-								<div className='flex items-center gap-2'>
-									<Beaker
-										className={`w-4 h-4 ${
-											isDark ? 'text-indigo-400' : 'text-indigo-600'
-										}`}
-									/>
-									<p
-										className={`text-xs sm:text-sm font-medium ${
-											isDark ? 'text-indigo-300' : 'text-indigo-700'
-										}`}
-									>
-										Варианты анилоксов
-									</p>
-								</div>
-								{expandedRecipes.includes(-1) ? (
-									<ChevronUp
-										className={`w-4 h-4 ${
-											isDark ? 'text-indigo-400' : 'text-indigo-600'
-										}`}
-									/>
-								) : (
-									<ChevronDown
-										className={`w-4 h-4 ${
-											isDark ? 'text-indigo-400' : 'text-indigo-600'
-										}`}
-									/>
-								)}
-							</div>
-						</button>
-
-						<div
-							className={`transform transition-all duration-300 ease-out origin-top
-								${
-									expandedRecipes.includes(-1)
-										? 'opacity-100 scale-y-100 translate-y-0'
-										: 'opacity-0 scale-y-0 -translate-y-2 h-0'
-								}`}
-						>
-							{expandedRecipes.includes(-1) && (
-								<div className='mt-3 space-y-4'>
-									{parseRecipes(color.recipe).map((recipe, recipeIndex) => {
-										if (!recipe.anilox) return null;
-										
-										return (
-											<div key={recipeIndex} className='space-y-2'>
-												<p className={`text-xs font-medium ${
-													isDark ? 'text-indigo-300' : 'text-indigo-700'
-												}`}>
-													Рецепт {recipeIndex + 1} (текущий анилокс: {recipe.anilox})
-												</p>
-												<div className='grid grid-cols-2 gap-2'>
-													{['500', '800'].map(targetAnilox => {
-														if (targetAnilox === recipe.anilox) return null;
-
-														const currentLab = hexToLab(color.hex);
-														const predictedLab = calculateAniloxChange(
-															currentLab,
-															recipe.anilox!,
-															targetAnilox
-														);
-														const predictedHex = predictedLab ? labToHex(predictedLab) : color.hex;
-
-														return (
-															<div
-																key={targetAnilox}
-																className={`p-2 rounded-lg ${
-																	isDark ? 'bg-indigo-900/30' : 'bg-indigo-50'
-																}`}
-															>
-																<div className='flex items-center gap-3'>
-																	<div
-																		className='w-10 h-10 rounded border'
-																		style={{ backgroundColor: predictedHex }}
-																	/>
-																	<div className='space-y-0.5'>
-																		<p className='text-xs font-medium'>
-																			Анилокс {targetAnilox}
-																		</p>
-																		<div className='text-xs opacity-80 space-y-0.5'>
-																			{predictedLab ? (
-																				<>
-																					<div>L: {predictedLab.l.toFixed(1)}</div>
-																					<div>a: {predictedLab.a.toFixed(1)}</div>
-																					<div>b: {predictedLab.b.toFixed(1)}</div>
-																				</>
-																			) : (
-																				<div>Нет данных</div>
-																			)}
-																		</div>
-																	</div>
-																</div>
-															</div>
-														);
-													})}
-												</div>
-											</div>
-										);
-									})}
-								</div>
-							)}
-						</div>
-					</div>
-				)}
-
 				{color.customers && color.customers.length > 0 && (
 					<div
 						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
@@ -871,6 +722,114 @@ export default function ColorCard({
 									</div>
 								)
 							})}
+						</div>
+					</div>
+				)}
+
+				{/* Additional Colors Section */}
+				{color.additionalColors && color.additionalColors.length > 0 && (
+					<div
+						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
+							isDark
+								? 'bg-violet-900/20 hover:bg-violet-900/30 border border-violet-800/30'
+								: 'bg-violet-50/80 hover:bg-violet-50 border border-violet-100'
+						}`}
+					>
+						<button
+							onClick={e => {
+								e.stopPropagation()
+								setExpandedAdditionalColors(!expandedAdditionalColors)
+							}}
+							className='w-full relative z-10'
+						>
+							<div className='flex items-center justify-between'>
+								<div className='flex items-center gap-2'>
+									<Beaker
+										className={`w-4 h-4 ${
+											isDark ? 'text-violet-400' : 'text-violet-600'
+										}`}
+									/>
+									<p
+										className={`text-xs sm:text-sm font-medium ${
+											isDark ? 'text-violet-300' : 'text-violet-700'
+										}`}
+									>
+										Дополнительные цвета ({color.additionalColors.length})
+									</p>
+								</div>
+								{expandedAdditionalColors ? (
+									<ChevronUp
+										className={`w-4 h-4 ${
+											isDark ? 'text-violet-400' : 'text-violet-600'
+										}`}
+									/>
+								) : (
+									<ChevronDown
+										className={`w-4 h-4 ${
+											isDark ? 'text-violet-400' : 'text-violet-600'
+										}`}
+									/>
+								)}
+							</div>
+						</button>
+
+						<div
+							className={`transform transition-all duration-300 ease-out origin-top
+								${
+									expandedAdditionalColors
+										? 'opacity-100 scale-y-100 translate-y-0'
+										: 'opacity-0 scale-y-0 -translate-y-2 h-0'
+								}`}
+						>
+							{expandedAdditionalColors && (
+								<div className='mt-3 space-y-3'>
+									{color.additionalColors.map((additionalColor, index) => (
+										<div
+											key={index}
+											className={`p-3 rounded-lg ${
+												isDark ? 'bg-violet-900/30' : 'bg-violet-50'
+											}`}
+										>
+											<div className='flex items-center gap-3'>
+												<div
+													className='w-10 h-10 rounded border'
+													style={{ backgroundColor: additionalColor.hex }}
+												/>
+												<div className='space-y-1'>
+													<p
+														className={`text-sm font-medium ${
+															isDark ? 'text-violet-200' : 'text-violet-900'
+														}`}
+													>
+														{additionalColor.name}
+													</p>
+													<div
+														className={`text-xs ${
+															isDark ? 'text-violet-300' : 'text-violet-700'
+														}`}
+													>
+														<p>Анилокс: {additionalColor.anilox}</p>
+														<p className='font-mono'>{additionalColor.hex}</p>
+														{additionalColor.labValues && (
+															<div className='space-x-2'>
+																<span>
+																	L: {additionalColor.labValues.l.toFixed(1)}
+																</span>
+																<span>
+																	a: {additionalColor.labValues.a.toFixed(1)}
+																</span>
+																<span>
+																	b: {additionalColor.labValues.b.toFixed(1)}
+																</span>
+															</div>
+														)}
+													</div>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
 						</div>
 					</div>
 				)}

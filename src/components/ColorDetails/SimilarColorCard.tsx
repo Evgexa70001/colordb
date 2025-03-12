@@ -2,13 +2,24 @@ import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
 
 interface SimilarColorCardProps {
-	color: PantoneColor
+	color: PantoneColor & {
+		distance?: number
+		matchingColor?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+		matchedWith?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+	}
 	distance?: number
 }
 
 export default function SimilarColorCard({
 	color,
-	distance,
 }: SimilarColorCardProps) {
 	const { isDark } = useTheme()
 
@@ -23,7 +34,7 @@ export default function SimilarColorCard({
 			<div className='flex items-center gap-3'>
 				<div
 					className='w-12 h-12 rounded-lg border shadow-sm'
-					style={{ backgroundColor: color.hex }}
+					style={{ backgroundColor: color.matchingColor?.hex || color.hex }}
 				/>
 				<div>
 					<h3
@@ -32,21 +43,28 @@ export default function SimilarColorCard({
 						}`}
 					>
 						{color.name}
+						{color.matchingColor?.isAdditional && (
+							<span className={`ml-2 text-sm ${
+								isDark ? 'text-blue-400' : 'text-blue-600'
+							}`}>
+								({color.matchingColor.name})
+							</span>
+						)}
 					</h3>
 					<p
 						className={`text-sm font-mono ${
 							isDark ? 'text-blue-300' : 'text-blue-700'
 						}`}
 					>
-						{color.hex}
+						{color.matchingColor?.hex || color.hex}
 					</p>
-					{distance !== undefined && (
+					{color.distance !== undefined && (
 						<p
 							className={`text-xs mt-1 ${
 								isDark ? 'text-blue-400' : 'text-blue-600'
 							}`}
 						>
-							Разница: {distance.toFixed(1)}
+							Разница: {color.distance.toFixed(1)}
 						</p>
 					)}
 				</div>
@@ -58,6 +76,13 @@ export default function SimilarColorCard({
 					}`}
 				>
 					{color.alternativeName}
+				</p>
+			)}
+			{color.matchedWith?.isAdditional && (
+				<p className={`mt-2 text-xs ${
+					isDark ? 'text-blue-400' : 'text-blue-600'
+				}`}>
+					Совпадение с дополнительным цветом: {color.matchedWith.name}
 				</p>
 			)}
 		</div>

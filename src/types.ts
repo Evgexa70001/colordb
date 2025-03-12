@@ -6,6 +6,18 @@ export interface User {
 }
 
 // Color types
+export interface AdditionalColor {
+	name: string
+	hex: string
+	anilox: string
+	labValues?: {
+		l: number
+		a: number
+		b: number
+	}
+	labSource?: 'manual' | 'converted'
+}
+
 export interface PantoneColor {
 	id: string
 	name: string
@@ -29,6 +41,7 @@ export interface PantoneColor {
 		b: number
 	}
 	labSource?: 'manual' | 'converted'
+	additionalColors?: AdditionalColor[]
 }
 
 export interface ColorData {
@@ -45,6 +58,7 @@ export interface ColorData {
 	images?: string[]
 	labValues?: { l: number; a: number; b: number }
 	labSource?: 'manual' | 'converted'
+	additionalColors?: AdditionalColor[]
 }
 
 // Modal Props

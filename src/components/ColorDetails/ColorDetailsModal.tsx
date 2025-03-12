@@ -55,43 +55,6 @@ export default function ColorDetailsModal({
 	// Используем сохраненные LAB координаты, если они есть
 	const colorLab = color.labValues || hexToLab(color.hex)
 
-	const parseRecipes = (recipeString: string): Recipe[] => {
-		const lines = recipeString.split('\n')
-		const recipes: Recipe[] = []
-		let currentRecipe: Recipe | null = null
-
-		lines.forEach(line => {
-			const totalAmountMatch = line.match(/^Общее количество: (\d+)/)
-			const materialMatch = line.match(/^Материал: (.+)/)
-			const aniloxMatch = line.match(/^Анилокс: (.+)/)
-			const commentMatch = line.match(/^Комментарий: (.+)/)
-			const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
-
-			if (totalAmountMatch) {
-				if (currentRecipe) recipes.push(currentRecipe)
-				currentRecipe = {
-					totalAmount: parseInt(totalAmountMatch[1]),
-					material: '',
-					items: [],
-				}
-			} else if (materialMatch && currentRecipe) {
-				currentRecipe.material = materialMatch[1]
-			} else if (aniloxMatch && currentRecipe) {
-				currentRecipe.anilox = aniloxMatch[1]
-			} else if (commentMatch && currentRecipe) {
-				currentRecipe.comment = commentMatch[1]
-			} else if (paintMatch && currentRecipe) {
-				currentRecipe.items.push({
-					paint: paintMatch[1],
-					amount: parseInt(paintMatch[2]),
-				})
-			}
-		})
-
-		if (currentRecipe) recipes.push(currentRecipe)
-		return recipes
-	}
-
 	const formatRecipe = (recipe: string) => {
 		const lines = recipe.split('\n')
 		const recipes: {
@@ -240,33 +203,6 @@ export default function ColorDetailsModal({
 		}
 	}
 
-	// При расчете изменений анилокса используем сохраненные LAB координаты
-	const calculateAniloxChange = (
-		lab: { l: number; a: number; b: number } | undefined,
-		fromAnilox: string,
-		toAnilox: string
-	) => {
-		if (!lab) return null;
-		
-		const lCoefficient = 1.693;
-
-		if (fromAnilox === '500' && toAnilox === '800') {
-			return {
-				l: lab.l * lCoefficient,
-				a: lab.a,
-				b: lab.b
-			}
-		} else if (fromAnilox === '800' && toAnilox === '500') {
-			return {
-				l: lab.l / lCoefficient,
-				a: lab.a,
-				b: lab.b
-			}
-		}
-
-		return lab;
-	}
-
 	return (
 		<Dialog open={isOpen} onClose={onClose} className='relative z-50'>
 			<div
@@ -331,66 +267,6 @@ export default function ColorDetailsModal({
 								isLabManual={color.labSource === 'manual'}
 							/>
 						</div>
-
-						{/* Recipe Anilox Change Prediction */}
-						{color.recipe &&
-							parseRecipes(color.recipe).map((recipe, index) => (
-								<div key={index}>
-									{recipe.anilox && (
-										<div
-											className={`p-4 rounded-xl ${
-												isDark ? 'bg-indigo-900/20' : 'bg-indigo-50'
-											}`}
-										>
-											<h4 className='text-sm font-medium mb-2'>
-												Прогноз изменения цвета при смене анилокса
-											</h4>
-											<div className='grid grid-cols-2 gap-4'>
-												{['500', '800'].map(targetAnilox => {
-													if (targetAnilox === recipe.anilox) return null
-													if (!recipe.anilox) return null
-
-													const currentLab = colorLab
-													const predictedLab = calculateAniloxChange(
-														currentLab,
-														recipe.anilox,
-														targetAnilox
-													)
-													const predictedHex = predictedLab ? labToHex(predictedLab) : color.hex
-
-													return (
-														<div
-															key={targetAnilox}
-															className='flex items-center gap-3'
-														>
-															<div
-																className='w-16 h-16 rounded-lg border'
-																style={{ backgroundColor: predictedHex }}
-															/>
-															<div>
-																<p className='text-sm font-medium'>
-																	Анилокс {targetAnilox}
-																</p>
-																<p className='text-xs'>
-																	{predictedLab ? (
-																		<>
-																			L: {predictedLab.l.toFixed(2)}, a:{' '}
-																			{predictedLab.a.toFixed(2)}, b:{' '}
-																			{predictedLab.b.toFixed(2)}
-																		</>
-																	) : (
-																		'Нет данных'
-																	)}
-																</p>
-															</div>
-														</div>
-													)
-												})}
-											</div>
-										</div>
-									)}
-								</div>
-							))}
 
 						{/* Category */}
 						<div

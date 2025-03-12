@@ -352,3 +352,71 @@ export function calculateAniloxChange(
 
 	return lab
 }
+
+export function calculateDeltaE(
+	lab1: { l: number; a: number; b: number },
+	lab2: { l: number; a: number; b: number }
+): number {
+	const kL = 1
+	const kC = 1
+	const kH = 1
+
+	const C1 = Math.sqrt(pow2(lab1.a) + pow2(lab1.b))
+	const C2 = Math.sqrt(pow2(lab2.a) + pow2(lab2.b))
+	const Cb = (C1 + C2) / 2
+
+	const G = 0.5 * (1 - Math.sqrt(pow2(Cb) / (pow2(Cb) + 25 * 25 * 25 * 25)))
+
+	const a1p = (1 + G) * lab1.a
+	const a2p = (1 + G) * lab2.a
+
+	const C1p = Math.sqrt(pow2(a1p) + pow2(lab1.b))
+	const C2p = Math.sqrt(pow2(a2p) + pow2(lab2.b))
+	const Cbp = (C1p + C2p) / 2
+
+	let h1p = rad2deg(Math.atan2(lab1.b, a1p))
+	if (h1p < 0) h1p += 360
+
+	let h2p = rad2deg(Math.atan2(lab2.b, a2p))
+	if (h2p < 0) h2p += 360
+
+	const Hbp =
+		Math.abs(h1p - h2p) > 180 ? (h1p + h2p + 360) / 2 : (h1p + h2p) / 2
+
+	const T =
+		1 -
+		0.17 * Math.cos(deg2rad(Hbp - 30)) +
+		0.24 * Math.cos(deg2rad(2 * Hbp)) +
+		0.32 * Math.cos(deg2rad(3 * Hbp + 6)) -
+		0.2 * Math.cos(deg2rad(4 * Hbp - 63))
+
+	let dhp = h2p - h1p
+	if (Math.abs(dhp) > 180) {
+		if (h2p <= h1p) {
+			dhp += 360
+		} else {
+			dhp -= 360
+		}
+	}
+
+	const dLp = lab2.l - lab1.l
+	const dCp = C2p - C1p
+	const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(deg2rad(dhp) / 2)
+
+	const SL = 1 + (0.015 * pow2(lab1.l - 50)) / Math.sqrt(20 + pow2(lab1.l - 50))
+	const SC = 1 + 0.045 * Cbp
+	const SH = 1 + 0.015 * Cbp * T
+
+	const dTheta = 30 * Math.exp(-pow2((Hbp - 275) / 25))
+	const RC = 2 * Math.sqrt(pow2(Cbp) / (pow2(Cbp) + 25 * 25 * 25 * 25))
+	const RT = -RC * Math.sin(2 * deg2rad(dTheta))
+
+	const dE = Math.sqrt(
+		pow2(dLp / (kL * SL)) +
+			pow2(dCp / (kC * SC)) +
+			pow2(dHp / (kH * SH)) +
+			RT * (dCp / (kC * SC)) * (dHp / (kH * SH))
+	)
+
+	return dE
+}

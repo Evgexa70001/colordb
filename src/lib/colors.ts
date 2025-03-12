@@ -82,6 +82,9 @@ export async function saveColor(
 			manager: color.manager || '',
 			createdAt: serverTimestamp(),
 			updatedAt: serverTimestamp(),
+			labValues: color.labValues || null,
+			labSource: color.labSource || null,
+			additionalColors: color.additionalColors || [],
 		})
 		return docRef
 	} catch (error) {
@@ -97,29 +100,32 @@ export async function saveColor(
 	}
 }
 
-export const updateColor = async (
-	colorId: string,
+export async function updateColor(
+	id: string,
 	updates: Partial<PantoneColor>
-) => {
+): Promise<void> {
 	try {
-		const colorRef = doc(db, 'colors', colorId)
-
-		// Очищаем объект обновлений от undefined значений
-		const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
-			if (value !== undefined) {
-				acc[key] = value
-			}
-			return acc
-		}, {} as Record<string, any>)
-
-		// Добавляем поле updatedAt
-		const updatedData = {
-			...cleanUpdates,
+		const colorRef = doc(db, 'colors', id)
+		const finalUpdates = {
+			...updates,
+			alternativeName: updates.alternativeName ?? '',
+			notes: updates.notes ?? '',
+			manager: updates.manager ?? '',
 			updatedAt: serverTimestamp(),
+			labValues: updates.labValues ?? null,
+			labSource: updates.labSource ?? null,
+			additionalColors: updates.additionalColors ?? [],
 		}
-
-		await updateDoc(colorRef, updatedData)
+		await updateDoc(colorRef, finalUpdates)
 	} catch (error) {
+		const firestoreError = error as FirestoreError
+		if (
+			firestoreError.code === 'failed-precondition' ||
+			firestoreError.code === 'unavailable'
+		) {
+			toast.error('Изменения будут сохранены после восстановления соединения')
+			throw new Error('offline')
+		}
 		console.error('Error updating color:', error)
 		throw error
 	}

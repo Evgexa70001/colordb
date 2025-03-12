@@ -9,6 +9,7 @@ import {
 	isValidHexColor,
 } from '@utils/colorUtils'
 import { UNCATEGORIZED } from '@lib/categories'
+import toast from 'react-hot-toast'
 
 import type { ColorData } from '@/types'
 
@@ -125,6 +126,13 @@ export default function NewColorModal({
 	const [recipes, setRecipes] = useState<Recipe[]>([])
 	const [colorInputMode, setColorInputMode] = useState<ColorInputMode>('hex')
 	const [labValues, setLabValues] = useState({ l: '0', a: '0', b: '0' })
+	const [additionalColors, setAdditionalColors] = useState<Array<{
+		name: string
+		hex: string
+		anilox: string
+		colorInputMode: ColorInputMode
+		labValues: { l: string; a: string; b: string }
+	}>>([])
 
 	const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false)
 
@@ -141,6 +149,7 @@ export default function NewColorModal({
 		setNotes('')
 		setManager('')
 		setRecipes([])
+		setAdditionalColors([])
 	}
 
 	const addRecipe = () => {
@@ -219,56 +228,138 @@ export default function NewColorModal({
 		// setShowPaintSuggestions(false);
 	}
 
+	const addAdditionalColor = () => {
+		setAdditionalColors([
+			...additionalColors,
+			{
+				name: '',
+				hex: '#',
+				anilox: '',
+				colorInputMode: 'hex',
+				labValues: { l: '0', a: '0', b: '0' },
+			},
+		])
+	}
+
+	const removeAdditionalColor = (index: number) => {
+		setAdditionalColors(additionalColors.filter((_, i) => i !== index))
+	}
+
+	const updateAdditionalColor = (
+		index: number,
+		updates: Partial<{
+			name: string
+			hex: string
+			anilox: string
+			colorInputMode: ColorInputMode
+			labValues: { l: string; a: string; b: string }
+		}>
+	) => {
+		setAdditionalColors(
+			additionalColors.map((color, i) =>
+				i === index ? { ...color, ...updates } : color
+			)
+		)
+	}
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
+		try {
+			const colorData: ColorData = {
+				name: name.trim(),
+				alternativeName: alternativeName.trim(),
+				hex: colorInputMode === 'lab'
+					? labToHex({
+							l: parseFloat(labValues.l),
+							a: parseFloat(labValues.a),
+							b: parseFloat(labValues.b),
+						})
+					: normalizeHexColor(hex),
+				category: category || UNCATEGORIZED,
+				recipe: recipes
+					.map(
+						recipe => `Общее количество: ${recipe.totalAmount}
+Материал: ${recipe.material}${
+							recipe.anilox ? `\nАнилокс: ${recipe.anilox}` : ''
+						}${recipe.comment ? `\nКомментарий: ${recipe.comment}` : ''}
+${recipe.items
+	.map(item => `Краска: ${item.paint}, Количество: ${item.amount}`)
+	.join('\n')}`
+					)
+					.join('\n\n'),
+				customers: customers
+					.split(',')
+					.map(c => c.trim())
+					.filter(Boolean),
+				inStock,
+				isVerified: false,
+				notes: notes.trim(),
+				manager: manager.trim(),
+				labValues: colorInputMode === 'lab' ? {
+					l: parseFloat(labValues.l),
+					a: parseFloat(labValues.a),
+					b: parseFloat(labValues.b),
+				} : hexToLab(normalizeHexColor(hex)),
+				labSource: colorInputMode === 'lab' ? 'manual' : 'converted',
+				additionalColors: additionalColors.map(color => {
+					const colorHex = color.colorInputMode === 'lab'
+						? labToHex({
+								l: parseFloat(color.labValues.l),
+								a: parseFloat(color.labValues.a),
+								b: parseFloat(color.labValues.b),
+							})
+						: normalizeHexColor(color.hex);
 
-		const colorData: ColorData = {
-			name,
-			alternativeName: alternativeName.trim() || null,
-			// Сохраняем LAB значения и их источник в зависимости от режима ввода
-			labValues: {
-				l: parseFloat(labValues.l),
-				a: parseFloat(labValues.a),
-				b: parseFloat(labValues.b)
-			},
-			labSource: colorInputMode === 'lab' ? 'manual' : 'converted',
-			// Если в режиме LAB, генерируем HEX из LAB, иначе используем введенный HEX
-			hex: colorInputMode === 'lab' 
-				? labToHex({
-						l: parseFloat(labValues.l),
-						a: parseFloat(labValues.a),
-						b: parseFloat(labValues.b)
-					})
-				: normalizeHexColor(hex),
-			category: category || UNCATEGORIZED,
-			customers: customers
-				.split(',')
-				.map(c => c.trim())
-				.filter(Boolean),
-			inStock,
-			isVerified,
-			notes: notes.trim() || null,
-			manager: manager.trim() || null,
-			recipe: recipes.length
-				? recipes
-						.map(recipe => formatRecipe(recipe))
-						.filter(Boolean)
-						.join('\n\n')
-				: undefined,
+					const colorLabValues = color.colorInputMode === 'lab' 
+						? {
+							l: parseFloat(color.labValues.l),
+							a: parseFloat(color.labValues.a),
+							b: parseFloat(color.labValues.b),
+						}
+						: hexToLab(colorHex);
+
+					return {
+						name: color.name.trim(),
+						hex: colorHex,
+						anilox: color.anilox.trim(),
+						labValues: colorLabValues,
+						labSource: color.colorInputMode === 'lab' ? 'manual' : 'converted'
+					}
+				})
+			}
+
+			if (!colorData.name) {
+				throw new Error('Название цвета обязательно')
+			}
+
+			if (colorInputMode === 'lab' && (!labValues.l || !labValues.a || !labValues.b)) {
+				throw new Error('Все значения LAB должны быть заполнены')
+			}
+
+			onSave(colorData)
+			resetForm()
+			onClose()
+		} catch (error) {
+			console.error('Error submitting color:', error)
+			toast.error(error instanceof Error ? error.message : 'Ошибка при сохранении цвета')
 		}
-
-		onSave(colorData)
 	}
 
 	// Обновляем useEffect для синхронизации значений
 	useEffect(() => {
 		if (colorInputMode === 'hex' && isValidHexColor(hex)) {
 			const labFromHex = hexToLab(hex)
-			setLabValues({
-				l: labFromHex.l.toFixed(2),
-				a: labFromHex.a.toFixed(2),
-				b: labFromHex.b.toFixed(2),
-			})
+			if (
+				labFromHex.l.toFixed(2) !== labValues.l ||
+				labFromHex.a.toFixed(2) !== labValues.a ||
+				labFromHex.b.toFixed(2) !== labValues.b
+			) {
+				setLabValues({
+					l: labFromHex.l.toFixed(2),
+					a: labFromHex.a.toFixed(2),
+					b: labFromHex.b.toFixed(2),
+				})
+			}
 		} else if (colorInputMode === 'lab') {
 			// В режиме LAB обновляем HEX на основе LAB значений
 			try {
@@ -277,12 +368,118 @@ export default function NewColorModal({
 					a: parseFloat(labValues.a) || 0,
 					b: parseFloat(labValues.b) || 0,
 				})
-				setHex(newHex)
+				if (newHex !== hex) {
+					setHex(newHex)
+				}
 			} catch (error) {
 				console.error('Error converting LAB to HEX:', error)
 			}
 		}
-	}, [hex, colorInputMode, labValues])
+	}, [hex, colorInputMode, labValues.l, labValues.a, labValues.b])
+
+	// Обновляем useEffect для инициализации формы
+	useEffect(() => {
+		if (!isOpen) return;
+
+		if (initialData) {
+			// Если есть начальные данные, заполняем форму
+			setName(initialData.name)
+			setAlternativeName(initialData.alternativeName || '')
+			
+			// Если есть LAB значения, используем их как первичный источник
+			if (initialData.labValues) {
+				setColorInputMode('lab')
+				const newLabValues = {
+					l: initialData.labValues.l.toFixed(2),
+					a: initialData.labValues.a.toFixed(2),
+					b: initialData.labValues.b.toFixed(2)
+				}
+				setLabValues(newLabValues)
+				// HEX генерируем из LAB
+				setHex(labToHex(initialData.labValues))
+			} else {
+				setColorInputMode('hex')
+				setHex(initialData.hex)
+				const labFromHex = hexToLab(initialData.hex)
+				setLabValues({
+					l: labFromHex.l.toFixed(2),
+					a: labFromHex.a.toFixed(2),
+					b: labFromHex.b.toFixed(2)
+				})
+			}
+
+			setCustomers(initialData.customers?.join(', ') || '')
+			setInStock(initialData.inStock)
+			setIsVerified(initialData.isVerified || false)
+			setCategory(initialData.category === UNCATEGORIZED ? '' : initialData.category)
+			setNotes(initialData.notes || '')
+			setManager(initialData.manager || '')
+
+			// Парсим рецепты если они есть
+			if (initialData.recipe) {
+				const lines = initialData.recipe.split('\n')
+				const parsedRecipes: Recipe[] = []
+				let currentRecipe: Recipe | null = null
+
+				lines.forEach((line: string) => {
+					const totalAmountMatch = line.match(/^Общее количество: (\d+)/)
+					const materialMatch = line.match(/^Материал: (.+)/)
+					const aniloxMatch = line.match(/^Анилокс: (.+)/)
+					const commentMatch = line.match(/^Комментарий: (.+)/)
+					const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
+
+					if (totalAmountMatch) {
+						if (currentRecipe) {
+							parsedRecipes.push(currentRecipe)
+						}
+						currentRecipe = {
+							totalAmount: parseInt(totalAmountMatch[1]),
+							material: '',
+							anilox: '',
+							items: [],
+						}
+					} else if (materialMatch && currentRecipe) {
+						currentRecipe.material = materialMatch[1]
+					} else if (aniloxMatch && currentRecipe) {
+						currentRecipe.anilox = aniloxMatch[1]
+					} else if (commentMatch && currentRecipe) {
+						currentRecipe.comment = commentMatch[1]
+					} else if (paintMatch && currentRecipe) {
+						currentRecipe.items.push({
+							paint: paintMatch[1],
+							amount: parseInt(paintMatch[2]),
+						})
+					}
+				})
+
+				if (currentRecipe) {
+					parsedRecipes.push(currentRecipe)
+				}
+
+				setRecipes(parsedRecipes)
+			} else {
+				setRecipes([])
+			}
+
+			setAdditionalColors(
+				initialData.additionalColors?.map(color => ({
+					name: color.name,
+					hex: color.hex,
+					anilox: color.anilox,
+					colorInputMode: color.labSource === 'manual' ? 'lab' : 'hex',
+					labValues: color.labValues
+						? {
+								l: color.labValues.l.toString(),
+								a: color.labValues.a.toString(),
+								b: color.labValues.b.toString(),
+						  }
+						: { l: '0', a: '0', b: '0' },
+				})) || []
+			)
+		} else {
+			resetForm()
+		}
+	}, [isOpen, initialData])
 
 	// Обновленные классы для рецептов
 	const recipeClasses = `p-4 rounded-lg mb-4 ${
@@ -309,114 +506,6 @@ export default function NewColorModal({
 			document.removeEventListener('mousedown', handleClickOutside)
 		}
 	}, [isCustomerDropdownOpen])
-
-	// Обновляем useEffect для инициализации формы
-	useEffect(() => {
-		if (isOpen) {
-			if (initialData) {
-				// Если есть начальные данные, заполняем форму
-				setName(initialData.name)
-				setAlternativeName(initialData.alternativeName || '')
-				
-				// Если есть LAB значения, используем их как первичный источник
-				if (initialData.labValues) {
-					setColorInputMode('lab')
-					setLabValues({
-						l: initialData.labValues.l.toFixed(2),
-						a: initialData.labValues.a.toFixed(2),
-						b: initialData.labValues.b.toFixed(2)
-					})
-					// HEX генерируем из LAB
-					setHex(labToHex(initialData.labValues))
-				} else {
-					setColorInputMode('hex')
-					setHex(initialData.hex)
-					const labFromHex = hexToLab(initialData.hex)
-					setLabValues({
-						l: labFromHex.l.toFixed(2),
-						a: labFromHex.a.toFixed(2),
-						b: labFromHex.b.toFixed(2)
-					})
-				}
-
-				setCustomers(initialData.customers?.join(', ') || '')
-				setInStock(initialData.inStock)
-				setIsVerified(initialData.isVerified || false)
-				setCategory(initialData.category === UNCATEGORIZED ? '' : initialData.category)
-				setNotes(initialData.notes || '')
-				setManager(initialData.manager || '')
-
-				// Парсим рецепты если они есть
-				if (initialData.recipe) {
-					const lines = initialData.recipe.split('\n')
-					const parsedRecipes: Recipe[] = []
-					let currentRecipe: Recipe | null = null
-
-					lines.forEach((line: string) => {
-						const totalAmountMatch = line.match(/^Общее количество: (\d+)/)
-						const materialMatch = line.match(/^Материал: (.+)/)
-						const aniloxMatch = line.match(/^Анилокс: (.+)/)
-						const commentMatch = line.match(/^Комментарий: (.+)/)
-						const paintMatch = line.match(/^Краска: (.+), Количество: (\d+)/)
-
-						if (totalAmountMatch) {
-							if (currentRecipe) {
-								parsedRecipes.push(currentRecipe)
-							}
-							currentRecipe = {
-								totalAmount: parseInt(totalAmountMatch[1]),
-								material: '',
-								anilox: '',
-								items: [],
-							}
-						} else if (materialMatch && currentRecipe) {
-							currentRecipe.material = materialMatch[1]
-						} else if (aniloxMatch && currentRecipe) {
-							currentRecipe.anilox = aniloxMatch[1]
-						} else if (commentMatch && currentRecipe) {
-							currentRecipe.comment = commentMatch[1]
-						} else if (paintMatch && currentRecipe) {
-							currentRecipe.items.push({
-								paint: paintMatch[1],
-								amount: parseInt(paintMatch[2]),
-							})
-						}
-					})
-
-					if (currentRecipe) {
-						parsedRecipes.push(currentRecipe)
-					}
-
-					setRecipes(parsedRecipes)
-				}
-			} else {
-				resetForm()
-			}
-		}
-	}, [isOpen, initialData])
-
-	const formatRecipe = (recipe: Recipe) => {
-		const lines = [
-			`Общее количество: ${recipe.totalAmount}`,
-			`Материал: ${recipe.material}`,
-		]
-
-		if (recipe.anilox) {
-			lines.push(`Анилокс: ${recipe.anilox}`)
-		}
-
-		if (recipe.comment) {
-			lines.push(`Комментарий: ${recipe.comment}`)
-		}
-
-		recipe.items
-			.filter(item => item.paint.trim() !== '' && item.amount > 0)
-			.forEach(item => {
-				lines.push(`Краска: ${item.paint}, Количество: ${item.amount}`)
-			})
-
-		return lines.join('\n')
-	}
 
 	return (
 		<Dialog open={isOpen} onClose={onClose} className='relative z-50'>
@@ -862,6 +951,217 @@ export default function NewColorModal({
 									leftIcon={<Plus className='w-4 h-4' />}
 								>
 									Добавить рецепт
+								</Button>
+							</div>
+						</div>
+
+						{/* Additional Colors Section */}
+						<div>
+							<label className={labelClasses}>Дополнительные цвета</label>
+							<div className={recipeClasses}>
+								{additionalColors.map((color, colorIndex) => (
+									<div
+										key={colorIndex}
+										className={`p-4 rounded-lg ${
+											isDark ? 'bg-gray-700' : 'bg-gray-100'
+										}`}
+									>
+										<div className='flex justify-between items-start mb-4'>
+											<h4
+												className={`font-medium ${
+													isDark ? 'text-gray-200' : 'text-gray-700'
+												}`}
+											>
+												Цвет {colorIndex + 1}
+											</h4>
+											<button
+												type='button'
+												onClick={() => removeAdditionalColor(colorIndex)}
+												className={`p-1 rounded-full ${
+													isDark
+														? 'hover:bg-gray-600 text-gray-400 hover:text-gray-300'
+														: 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
+												}`}
+											>
+												<X className='w-4 h-4' />
+											</button>
+										</div>
+
+										<div className='space-y-4'>
+											<div className='grid grid-cols-2 gap-4'>
+												<Input
+													id={`color-name-${colorIndex}`}
+													value={color.name}
+													onChange={e =>
+														updateAdditionalColor(colorIndex, {
+															name: e.target.value,
+														})
+													}
+													label='Название'
+													required
+												/>
+												<Input
+													id={`color-anilox-${colorIndex}`}
+													value={color.anilox}
+													onChange={e =>
+														updateAdditionalColor(colorIndex, {
+															anilox: e.target.value,
+														})
+													}
+													label='Анилокс'
+													required
+												/>
+											</div>
+
+											<div className='space-y-4'>
+												<div className='flex gap-4 items-center'>
+													<label className={labelClasses}>Формат цвета:</label>
+													<div className='flex gap-2'>
+														<button
+															type='button'
+															onClick={() =>
+																updateAdditionalColor(colorIndex, {
+																	colorInputMode: 'hex',
+																})
+															}
+															className={`px-3 py-1 rounded-md ${
+																color.colorInputMode === 'hex'
+																	? isDark
+																		? 'bg-blue-500 text-white'
+																		: 'bg-blue-600 text-white'
+																	: isDark
+																	? 'bg-gray-700 text-gray-300'
+																	: 'bg-gray-100 text-gray-700'
+															}`}
+														>
+															HEX
+														</button>
+														<button
+															type='button'
+															onClick={() =>
+																updateAdditionalColor(colorIndex, {
+																	colorInputMode: 'lab',
+																})
+															}
+															className={`px-3 py-1 rounded-md ${
+																color.colorInputMode === 'lab'
+																	? isDark
+																		? 'bg-blue-500 text-white'
+																		: 'bg-blue-600 text-white'
+																	: isDark
+																	? 'bg-gray-700 text-gray-300'
+																	: 'bg-gray-100 text-gray-700'
+															}`}
+														>
+															LAB
+														</button>
+													</div>
+												</div>
+
+												<div className='flex gap-4 items-end'>
+													{color.colorInputMode === 'hex' ? (
+														<div className='flex-1'>
+															<Input
+																id={`color-hex-${colorIndex}`}
+																value={color.hex}
+																onChange={e =>
+																	updateAdditionalColor(colorIndex, {
+																		hex: e.target.value,
+																	})
+																}
+																required
+																pattern='^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+																label='HEX код'
+																placeholder='Пример: #000000'
+															/>
+														</div>
+													) : (
+														<div className='flex-1 grid grid-cols-3 gap-4'>
+															<Input
+																id={`color-lab-l-${colorIndex}`}
+																value={color.labValues.l}
+																onChange={e => {
+																	const value = e.target.value.replace(',', '.')
+																	updateAdditionalColor(colorIndex, {
+																		labValues: {
+																			...color.labValues,
+																			l: value,
+																		},
+																	})
+																}}
+																required
+																type='text'
+																inputMode='numeric'
+																pattern='-?[0-9]*\.?[0-9]*'
+																label='L'
+															/>
+															<Input
+																id={`color-lab-a-${colorIndex}`}
+																value={color.labValues.a}
+																onChange={e => {
+																	const value = e.target.value.replace(',', '.')
+																	updateAdditionalColor(colorIndex, {
+																		labValues: {
+																			...color.labValues,
+																			a: value,
+																		},
+																	})
+																}}
+																required
+																type='text'
+																inputMode='numeric'
+																pattern='-?[0-9]*\.?[0-9]*'
+																label='a'
+															/>
+															<Input
+																id={`color-lab-b-${colorIndex}`}
+																value={color.labValues.b}
+																onChange={e => {
+																	const value = e.target.value.replace(',', '.')
+																	updateAdditionalColor(colorIndex, {
+																		labValues: {
+																			...color.labValues,
+																			b: value,
+																		},
+																	})
+																}}
+																required
+																type='text'
+																inputMode='numeric'
+																pattern='-?[0-9]*\.?[0-9]*'
+																label='b'
+															/>
+														</div>
+													)}
+													<div
+														className='w-10 h-10 rounded-md border shadow-sm flex-shrink-0'
+														style={{
+															backgroundColor:
+																color.colorInputMode === 'lab'
+																	? labToHex({
+																		l: parseFloat(color.labValues.l),
+																		a: parseFloat(color.labValues.a),
+																		b: parseFloat(color.labValues.b),
+																  })
+																	: normalizeHexColor(color.hex),
+															borderColor: isDark
+																? 'rgba(75, 85, 99, 0.6)'
+																: 'rgba(209, 213, 219, 1)',
+														}}
+													/>
+												</div>
+											</div>
+										</div>
+									</div>
+								))}
+								<Button
+									className='w-full'
+									type='button'
+									variant='outline'
+									onClick={addAdditionalColor}
+									leftIcon={<Plus className='w-4 h-4' />}
+								>
+									Добавить цвет
 								</Button>
 							</div>
 						</div>

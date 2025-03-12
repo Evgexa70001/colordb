@@ -227,7 +227,19 @@ const getSimilarColors = (
 	targetColor: PantoneColor,
 	colors: PantoneColor[]
 ): {
-	similarColors: (PantoneColor & { distance?: number })[]
+	similarColors: (PantoneColor & { 
+		distance?: number
+		matchingColor?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+		matchedWith?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+	})[]
 	similarRecipes: Array<{
 		color: PantoneColor
 		similarRecipes: Array<{
@@ -242,10 +254,99 @@ const getSimilarColors = (
 				.filter(
 					color => color.id !== targetColor.id && isValidHexColor(color.hex)
 				)
-				.map(color => ({
-					...color,
-					distance: getColorDistance(targetColor.hex, color.hex),
-				}))
+				.map(color => {
+					// Start with the main color distance
+					let minDistance = getColorDistance(targetColor.hex, color.hex)
+					let matchingColor = {
+						name: color.name,
+						hex: color.hex,
+						isAdditional: false
+					}
+					let matchedWith = {
+						name: targetColor.name,
+						hex: targetColor.hex,
+						isAdditional: false
+					}
+
+					// Check target's additional colors against color's main hex
+					if (targetColor.additionalColors && targetColor.additionalColors.length > 0) {
+						targetColor.additionalColors.forEach(additionalColor => {
+							if (isValidHexColor(additionalColor.hex)) {
+								const distance = getColorDistance(additionalColor.hex, color.hex)
+								if (distance < minDistance) {
+									minDistance = distance
+									matchingColor = {
+										name: color.name,
+										hex: color.hex,
+										isAdditional: false
+									}
+									matchedWith = {
+										name: additionalColor.name,
+										hex: additionalColor.hex,
+										isAdditional: true
+									}
+								}
+							}
+						})
+					}
+
+					// Check color's additional colors against target's main hex
+					const colorWithAdditional = color as PantoneColor & { additionalColors?: Array<{ name: string, hex: string }> }
+					if (colorWithAdditional.additionalColors && colorWithAdditional.additionalColors.length > 0) {
+						colorWithAdditional.additionalColors.forEach(additionalColor => {
+							if (isValidHexColor(additionalColor.hex)) {
+								const distance = getColorDistance(targetColor.hex, additionalColor.hex)
+								if (distance < minDistance) {
+									minDistance = distance
+									matchingColor = {
+										name: additionalColor.name,
+										hex: additionalColor.hex,
+										isAdditional: true
+									}
+									matchedWith = {
+										name: targetColor.name,
+										hex: targetColor.hex,
+										isAdditional: false
+									}
+								}
+							}
+						})
+					}
+
+					// Check additional colors against each other
+					if (targetColor.additionalColors && targetColor.additionalColors.length > 0 && 
+						colorWithAdditional.additionalColors && colorWithAdditional.additionalColors.length > 0) {
+						targetColor.additionalColors.forEach(targetAdditional => {
+							if (isValidHexColor(targetAdditional.hex)) {
+								colorWithAdditional.additionalColors!.forEach(colorAdditional => {
+									if (isValidHexColor(colorAdditional.hex)) {
+										const distance = getColorDistance(targetAdditional.hex, colorAdditional.hex)
+										if (distance < minDistance) {
+											minDistance = distance
+											matchingColor = {
+												name: colorAdditional.name,
+												hex: colorAdditional.hex,
+												isAdditional: true
+											}
+											matchedWith = {
+												name: targetAdditional.name,
+												hex: targetAdditional.hex,
+												isAdditional: true
+											}
+										}
+									}
+								})
+							}
+						})
+					}
+
+					return {
+						...color,
+						distance: minDistance,
+						matchingColor,
+						matchedWith
+					}
+				})
 				.filter(color => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
 				.sort((a, b) => (a.distance || 0) - (b.distance || 0))
 				.slice(0, 6)
@@ -656,10 +757,16 @@ export default function Dashboard() {
 					const matchesSearch =
 						color.name.toLowerCase().includes(searchLower) ||
 						color.alternativeName?.toLowerCase().includes(searchLower) ||
-						false ||
 						color.hex.toLowerCase().includes(searchLower) ||
 						color.customers?.some(customer =>
 							customer.toLowerCase().includes(searchLower)
+						) ||
+						// Добавляем поиск по дополнительным цветам
+						color.additionalColors?.some(
+							additionalColor =>
+								additionalColor.name.toLowerCase().includes(searchLower) ||
+								additionalColor.hex.toLowerCase().includes(searchLower) ||
+								additionalColor.anilox.toLowerCase().includes(searchLower)
 						) ||
 						false
 					const matchesCategory =
