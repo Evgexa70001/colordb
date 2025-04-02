@@ -24,10 +24,28 @@ import SimilarColorCard from './SimilarColorCard'
 import SimilarRecipeCard from './SimilarRecipeCard'
 
 interface ColorDetailsModalProps {
-	color: PantoneColor & { labValues?: { l: number; a: number; b: number }, labSource?: 'manual' | 'converted' }
+	color: PantoneColor & {
+		labValues?: { l: number; a: number; b: number }
+		labSource?: 'manual' | 'converted'
+	}
 	isOpen: boolean
 	onClose: () => void
-	similarColors: (PantoneColor & { distance?: number })[]
+	similarColors: (PantoneColor & {
+		distance?: {
+			deltaE2000: number
+			deltaE76: number
+		}
+		matchingColor?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+		matchedWith?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+	})[]
 	similarRecipes: Array<{
 		color: PantoneColor
 		similarRecipes: Array<{
@@ -174,8 +192,9 @@ export default function ColorDetailsModal({
 			toast.loading('Загрузка изображения...', { id: 'uploadImage' })
 			const imageUrl = await uploadToImgur(file)
 
-			// Обновляем массив изображений
+			// Обновляем данные, сохраняя все существующие поля
 			await onUpdate?.(color.id, {
+				...color,
 				images: [...(color.images || []), imageUrl],
 			})
 
@@ -194,6 +213,7 @@ export default function ColorDetailsModal({
 	const handleRemoveImage = async (imageUrl: string) => {
 		try {
 			await onUpdate?.(color.id, {
+				...color,
 				images: (color.images || []).filter(url => url !== imageUrl),
 			})
 			toast.success('Изображение удалено')
@@ -244,7 +264,7 @@ export default function ColorDetailsModal({
 								<div
 									className='w-full aspect-square rounded-xl shadow-2xl ring-4 ring-opacity-20'
 									style={{
-										backgroundColor: color.labValues 
+										backgroundColor: color.labValues
 											? labToHex(color.labValues)
 											: normalizedHex,
 									}}
@@ -261,8 +281,8 @@ export default function ColorDetailsModal({
 							</div>
 
 							{/* Color Information */}
-							<ColorInfo 
-								colorInfo={colorInfo} 
+							<ColorInfo
+								colorInfo={colorInfo}
 								labValues={colorLab}
 								isLabManual={color.labSource === 'manual'}
 							/>
@@ -549,7 +569,6 @@ export default function ColorDetailsModal({
 											<SimilarColorCard
 												key={similarColor.id}
 												color={similarColor}
-												distance={similarColor.distance}
 											/>
 										))
 									) : (

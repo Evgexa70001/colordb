@@ -52,7 +52,7 @@ type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
 type VerificationFilter = 'all' | 'verified' | 'unverified'
 
-const SIMILAR_COLOR_THRESHOLD = 8
+// const SIMILAR_COLOR_THRESHOLD = 8
 const SKELETON_COUNT = 6
 const ITEMS_PER_PAGE = 18
 const INITIAL_CUSTOMERS_TO_SHOW = 10
@@ -227,8 +227,11 @@ const getSimilarColors = (
 	targetColor: PantoneColor,
 	colors: PantoneColor[]
 ): {
-	similarColors: (PantoneColor & { 
-		distance?: number
+	similarColors: (PantoneColor & {
+		distance?: {
+			deltaE2000: number
+			deltaE76: number
+		}
 		matchingColor?: {
 			name: string
 			hex: string
@@ -260,30 +263,36 @@ const getSimilarColors = (
 					let matchingColor = {
 						name: color.name,
 						hex: color.hex,
-						isAdditional: false
+						isAdditional: false,
 					}
 					let matchedWith = {
 						name: targetColor.name,
 						hex: targetColor.hex,
-						isAdditional: false
+						isAdditional: false,
 					}
 
 					// Check target's additional colors against color's main hex
-					if (targetColor.additionalColors && targetColor.additionalColors.length > 0) {
+					if (
+						targetColor.additionalColors &&
+						targetColor.additionalColors.length > 0
+					) {
 						targetColor.additionalColors.forEach(additionalColor => {
 							if (isValidHexColor(additionalColor.hex)) {
-								const distance = getColorDistance(additionalColor.hex, color.hex)
-								if (distance < minDistance) {
+								const distance = getColorDistance(
+									additionalColor.hex,
+									color.hex
+								)
+								if (distance.deltaE2000 < minDistance.deltaE2000) {
 									minDistance = distance
 									matchingColor = {
 										name: color.name,
 										hex: color.hex,
-										isAdditional: false
+										isAdditional: false,
 									}
 									matchedWith = {
 										name: additionalColor.name,
 										hex: additionalColor.hex,
-										isAdditional: true
+										isAdditional: true,
 									}
 								}
 							}
@@ -291,22 +300,30 @@ const getSimilarColors = (
 					}
 
 					// Check color's additional colors against target's main hex
-					const colorWithAdditional = color as PantoneColor & { additionalColors?: Array<{ name: string, hex: string }> }
-					if (colorWithAdditional.additionalColors && colorWithAdditional.additionalColors.length > 0) {
+					const colorWithAdditional = color as PantoneColor & {
+						additionalColors?: Array<{ name: string; hex: string }>
+					}
+					if (
+						colorWithAdditional.additionalColors &&
+						colorWithAdditional.additionalColors.length > 0
+					) {
 						colorWithAdditional.additionalColors.forEach(additionalColor => {
 							if (isValidHexColor(additionalColor.hex)) {
-								const distance = getColorDistance(targetColor.hex, additionalColor.hex)
-								if (distance < minDistance) {
+								const distance = getColorDistance(
+									targetColor.hex,
+									additionalColor.hex
+								)
+								if (distance.deltaE2000 < minDistance.deltaE2000) {
 									minDistance = distance
 									matchingColor = {
 										name: additionalColor.name,
 										hex: additionalColor.hex,
-										isAdditional: true
+										isAdditional: true,
 									}
 									matchedWith = {
 										name: targetColor.name,
 										hex: targetColor.hex,
-										isAdditional: false
+										isAdditional: false,
 									}
 								}
 							}
@@ -314,28 +331,37 @@ const getSimilarColors = (
 					}
 
 					// Check additional colors against each other
-					if (targetColor.additionalColors && targetColor.additionalColors.length > 0 && 
-						colorWithAdditional.additionalColors && colorWithAdditional.additionalColors.length > 0) {
+					if (
+						targetColor.additionalColors &&
+						targetColor.additionalColors.length > 0 &&
+						colorWithAdditional.additionalColors &&
+						colorWithAdditional.additionalColors.length > 0
+					) {
 						targetColor.additionalColors.forEach(targetAdditional => {
 							if (isValidHexColor(targetAdditional.hex)) {
-								colorWithAdditional.additionalColors!.forEach(colorAdditional => {
-									if (isValidHexColor(colorAdditional.hex)) {
-										const distance = getColorDistance(targetAdditional.hex, colorAdditional.hex)
-										if (distance < minDistance) {
-											minDistance = distance
-											matchingColor = {
-												name: colorAdditional.name,
-												hex: colorAdditional.hex,
-												isAdditional: true
-											}
-											matchedWith = {
-												name: targetAdditional.name,
-												hex: targetAdditional.hex,
-												isAdditional: true
+								colorWithAdditional.additionalColors!.forEach(
+									colorAdditional => {
+										if (isValidHexColor(colorAdditional.hex)) {
+											const distance = getColorDistance(
+												targetAdditional.hex,
+												colorAdditional.hex
+											)
+											if (distance.deltaE2000 < minDistance.deltaE2000) {
+												minDistance = distance
+												matchingColor = {
+													name: colorAdditional.name,
+													hex: colorAdditional.hex,
+													isAdditional: true,
+												}
+												matchedWith = {
+													name: targetAdditional.name,
+													hex: targetAdditional.hex,
+													isAdditional: true,
+												}
 											}
 										}
 									}
-								})
+								)
 							}
 						})
 					}
@@ -344,11 +370,11 @@ const getSimilarColors = (
 						...color,
 						distance: minDistance,
 						matchingColor,
-						matchedWith
+						matchedWith,
 					}
 				})
-				.filter(color => (color.distance || 0) <= SIMILAR_COLOR_THRESHOLD)
-				.sort((a, b) => (a.distance || 0) - (b.distance || 0))
+				.filter(color => color.distance.deltaE2000 < 10)
+				.sort((a, b) => a.distance.deltaE2000 - b.distance.deltaE2000)
 				.slice(0, 6)
 
 	const similarRecipes = getSimilarRecipes(targetColor, colors)
@@ -569,6 +595,20 @@ export default function Dashboard() {
 				throw new Error('Color ID is required')
 			}
 
+			// Если обновляется только счетчик использований, не делаем ничего,
+			// так как incrementUsageCount уже обновил базу данных
+			if (Object.keys(updates).length === 1 && 'usageCount' in updates) {
+				// Обновляем локальное состояние
+				setColors(prevColors =>
+					prevColors.map(color =>
+						color.id === colorId
+							? { ...color, usageCount: (color.usageCount || 0) + 1 }
+							: color
+					)
+				)
+				return
+			}
+
 			const finalUpdates = {
 				...updates,
 				alternativeName:
@@ -579,13 +619,13 @@ export default function Dashboard() {
 
 			await updateColor(colorId, finalUpdates)
 
-			// Перезагружаем данные
+			// Перезагружаем данные только для не-счетчиковых обновлений
 			await loadData()
 
 			// Если активен поиск по рецепту, обновляем результаты поиска
 			if (isSearchActive && searchResults.length > 0) {
 				const updatedSearchResults = searchResults.map(color =>
-					color.id === colorId ? { ...color, ...finalUpdates } : color
+					color.id === colorId ? { ...color, ...updates } : color
 				)
 				setSearchResults(updatedSearchResults)
 			}
@@ -700,12 +740,15 @@ export default function Dashboard() {
 	}
 
 	const handleLABSearch = (searchLab: { l: number; a: number; b: number }) => {
-		const LAB_TOLERANCE = 5;
+		const LAB_TOLERANCE = 5
 
 		const results = colors.filter(color => {
 			// First check saved LAB values if they exist
 			if (color.labValues) {
-				const savedLabDistance = calculateLabDistance(searchLab, color.labValues)
+				const savedLabDistance = calculateLabDistance(
+					searchLab,
+					color.labValues
+				)
 				// Изменяем проверку на диапазон ±5 единиц
 				if (Math.abs(savedLabDistance) <= LAB_TOLERANCE) return true
 			}
@@ -725,16 +768,14 @@ export default function Dashboard() {
 					const aniloxValues = ['500', '800']
 					return aniloxValues.some(targetAnilox => {
 						if (targetAnilox === recipe.anilox) return false
-						
-						const predictedLab = recipe.anilox ? calculateAniloxChange(
-							colorLab,
-							recipe.anilox,
-							targetAnilox
-						) : null
+
+						const predictedLab = recipe.anilox
+							? calculateAniloxChange(colorLab, recipe.anilox, targetAnilox)
+							: null
 						if (!predictedLab) return false
 
 						const distance = calculateLabDistance(searchLab, predictedLab)
-						
+
 						// Изменяем проверку на диапазон ±5 единиц
 						return Math.abs(distance) <= LAB_TOLERANCE
 					})

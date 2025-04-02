@@ -16,9 +16,10 @@ import {
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
-import { incrementUsageCount } from '@lib/colors'
+// import { doc, updateDoc, increment } from 'firebase/firestore'
 import toast from 'react-hot-toast'
-import { labToHex } from '@utils/colorUtils'
+// import { labToHex } from '@utils/colorUtils'
+import { incrementUsageCount } from '@lib/colors'
 
 interface ColorCardProps {
 	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
@@ -76,7 +77,8 @@ export default function ColorCard({
 }: ColorCardProps) {
 	const { isDark } = useTheme()
 	const [expandedRecipes, setExpandedRecipes] = useState<number[]>([])
-	const [expandedAdditionalColors, setExpandedAdditionalColors] = useState(false)
+	const [expandedAdditionalColors, setExpandedAdditionalColors] =
+		useState(false)
 
 	const toggleRecipe = (index: number) => {
 		setExpandedRecipes(prev =>
@@ -365,6 +367,7 @@ export default function ColorCard({
 			onUpdate()
 			toast.success('Счетчик использований обновлен')
 		} catch (error) {
+			console.error('Error updating usage count:', error)
 			toast.error('Ошибка при обновлении счетчика')
 		}
 	}
@@ -413,10 +416,10 @@ export default function ColorCard({
 			<div
 				className='h-32 sm:h-40 relative transition-all duration-500 ease-out
         group-hover:shadow-[inset_0_-20px_30px_-10px_rgba(0,0,0,0.2)]'
-				style={{ 
-					backgroundColor: color.labValues 
-						? labToHex(color.labValues)
-						: color.hex 
+				style={{
+					backgroundColor: color.labValues
+						? `lab(${color.labValues.l}% ${color.labValues.a} ${color.labValues.b})`
+						: color.hex,
 				}}
 			>
 				<div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-black/20 backdrop-blur-[2px]'>

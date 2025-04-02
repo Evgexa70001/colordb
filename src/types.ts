@@ -21,17 +21,17 @@ export interface AdditionalColor {
 export interface PantoneColor {
 	id: string
 	name: string
-	alternativeName?: string | null
 	hex: string
 	category: string
-	customers?: string[]
 	inStock: boolean
+	isVerified: boolean
 	recipe?: string
-	notes?: string | null
-	manager?: string | null
+	notes?: string
+	manager?: string
+	customers?: string[]
+	alternativeName?: string
 	createdAt?: string | { seconds: number; nanoseconds: number }
 	updatedAt?: string | { seconds: number; nanoseconds: number }
-	isVerified?: boolean
 	usageCount?: number
 	linkedColors?: string[]
 	images?: string[]
@@ -41,20 +41,34 @@ export interface PantoneColor {
 		b: number
 	}
 	labSource?: 'manual' | 'converted'
-	additionalColors?: AdditionalColor[]
+	additionalColors?: Array<{
+		name: string
+		hex: string
+		anilox: string
+		labValues?: {
+			l: number
+			a: number
+			b: number
+		}
+		labSource?: 'manual' | 'converted'
+	}>
+	distance?: {
+		deltaE2000: number
+		deltaE76: number
+	}
 }
 
 export interface ColorData {
 	name: string
-	alternativeName?: string | null
+	alternativeName?: string
 	hex: string
 	category: string
 	recipe?: string
 	customers?: string[]
 	inStock: boolean
-	isVerified?: boolean
-	notes?: string | null
-	manager?: string | null
+	isVerified: boolean
+	notes?: string
+	manager?: string
 	images?: string[]
 	labValues?: { l: number; a: number; b: number }
 	labSource?: 'manual' | 'converted'
@@ -90,7 +104,22 @@ export interface ColorDetailsModalProps {
 	color: PantoneColor
 	isOpen: boolean
 	onClose: () => void
-	similarColors: (PantoneColor & { distance?: number })[]
+	similarColors: (PantoneColor & {
+		distance?: {
+			deltaE2000: number
+			deltaE76: number
+		}
+		matchingColor?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+		matchedWith?: {
+			name: string
+			hex: string
+			isAdditional: boolean
+		}
+	})[]
 }
 
 // Recipe types

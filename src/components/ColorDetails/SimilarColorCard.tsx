@@ -1,9 +1,13 @@
 import { useTheme } from '@contexts/ThemeContext'
+import { normalizeHexColor } from '@utils/colorUtils'
 import type { PantoneColor } from '@/types'
 
 interface SimilarColorCardProps {
 	color: PantoneColor & {
-		distance?: number
+		distance?: {
+			deltaE2000: number
+			deltaE76: number
+		}
 		matchingColor?: {
 			name: string
 			hex: string
@@ -15,73 +19,74 @@ interface SimilarColorCardProps {
 			isAdditional: boolean
 		}
 	}
-	distance?: number
 }
 
-export default function SimilarColorCard({
-	color,
-}: SimilarColorCardProps) {
+export default function SimilarColorCard({ color }: SimilarColorCardProps) {
 	const { isDark } = useTheme()
+
+	const getColorDifferenceText = (deltaE: number) => {
+		if (deltaE < 1) return 'Не различимо человеческим глазом'
+		if (deltaE < 2) return 'Едва заметное различие'
+		if (deltaE < 3) return 'Заметное различие при близком рассмотрении'
+		if (deltaE < 5) return 'Заметное различие'
+		return 'Явное различие'
+	}
 
 	return (
 		<div
 			className={`p-4 rounded-xl transition-all duration-200 ${
 				isDark
-					? 'bg-blue-900/20 border-blue-800/30'
-					: 'bg-blue-50/80 border-blue-200'
-			} border`}
+					? 'bg-gray-700/50 hover:bg-gray-700/70'
+					: 'bg-gray-50 hover:bg-gray-100/70'
+			}`}
 		>
-			<div className='flex items-center gap-3'>
-				<div
-					className='w-12 h-12 rounded-lg border shadow-sm'
-					style={{ backgroundColor: color.matchingColor?.hex || color.hex }}
-				/>
-				<div>
-					<h3
-						className={`font-medium ${
-							isDark ? 'text-blue-200' : 'text-blue-900'
-						}`}
-					>
-						{color.name}
-						{color.matchingColor?.isAdditional && (
-							<span className={`ml-2 text-sm ${
-								isDark ? 'text-blue-400' : 'text-blue-600'
-							}`}>
-								({color.matchingColor.name})
-							</span>
-						)}
-					</h3>
-					<p
-						className={`text-sm font-mono ${
-							isDark ? 'text-blue-300' : 'text-blue-700'
-						}`}
-					>
-						{color.matchingColor?.hex || color.hex}
-					</p>
-					{color.distance !== undefined && (
-						<p
-							className={`text-xs mt-1 ${
-								isDark ? 'text-blue-400' : 'text-blue-600'
-							}`}
-						>
-							Разница: {color.distance.toFixed(1)}
-						</p>
-					)}
-				</div>
-			</div>
-			{color.alternativeName && (
+			<div className='space-y-3'>
 				<p
-					className={`mt-2 text-sm ${
-						isDark ? 'text-blue-300' : 'text-blue-700'
+					className={`text-sm font-semibold truncate ${
+						isDark ? 'text-gray-100' : 'text-gray-700'
 					}`}
 				>
-					{color.alternativeName}
+					{color.name}
+				</p>
+				<div
+					className='aspect-square w-full rounded-xl shadow-sm transition-transform hover:scale-105'
+					style={{ backgroundColor: normalizeHexColor(color.hex) }}
+				/>
+				<p
+					className={`text-xs font-mono ${
+						isDark ? 'text-gray-300' : 'text-gray-500'
+					}`}
+				>
+					{normalizeHexColor(color.hex)}
+				</p>
+			</div>
+			<div
+				className={`text-xs mt-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+			>
+				<p className='font-medium'>
+					Delta E: {color.distance?.deltaE2000.toFixed(2)} /{' '}
+					{color.distance?.deltaE76.toFixed(2)}
+					<span className='text-xs opacity-75 ml-1'>(CIEDE2000 / CIE76)</span>
+				</p>
+				<p className='mt-2 leading-relaxed'>
+					{getColorDifferenceText(color.distance?.deltaE2000 || 0)}
+				</p>
+			</div>
+			{color.matchingColor?.isAdditional && (
+				<p
+					className={`mt-2 text-xs ${
+						isDark ? 'text-gray-300' : 'text-gray-600'
+					}`}
+				>
+					({color.matchingColor.name})
 				</p>
 			)}
 			{color.matchedWith?.isAdditional && (
-				<p className={`mt-2 text-xs ${
-					isDark ? 'text-blue-400' : 'text-blue-600'
-				}`}>
+				<p
+					className={`mt-2 text-xs ${
+						isDark ? 'text-gray-300' : 'text-gray-600'
+					}`}
+				>
 					Совпадение с дополнительным цветом: {color.matchedWith.name}
 				</p>
 			)}
