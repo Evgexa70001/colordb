@@ -292,7 +292,7 @@ ${recipe.items
 					.map(c => c.trim())
 					.filter(Boolean),
 				inStock,
-				isVerified: false,
+				isVerified,
 				notes: notes.trim(),
 				manager: manager.trim(),
 				labValues: colorInputMode === 'lab' ? {
