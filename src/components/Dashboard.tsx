@@ -12,7 +12,7 @@ import {
 	Link2,
 	Search,
 	Printer,
-	Beaker,
+	// Beaker,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { useAuth } from '@contexts/AuthContext'
@@ -1093,7 +1093,7 @@ export default function Dashboard() {
 								>
 									{isLinkingMode ? 'Отменить связывание' : 'Связать цвета'}
 								</Button>
-								<Button
+								{/* <Button
 									className='w-full'
 									variant='secondary'
 									leftIcon={<Beaker className='w-4 h-4' />}
@@ -1103,7 +1103,7 @@ export default function Dashboard() {
 									}}
 								>
 									Поиск по LAB
-								</Button>
+								</Button> */}
 								<Button
 									className='w-full'
 									variant='secondary'
