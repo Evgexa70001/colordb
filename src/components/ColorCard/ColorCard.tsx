@@ -447,12 +447,19 @@ export default function ColorCard({
 							{color.alternativeName}
 						</p>
 					)}
-					<p
+					{/* <p
 						className={`text-xs sm:text-sm font-mono ${
 							isDark ? 'text-gray-400' : 'text-gray-600'
 						}`}
 					>
 						{color.hex}
+					</p> */}
+					<p
+						className={`text-xs sm:text-sm font-mono ${
+							isDark ? 'text-gray-400' : 'text-gray-600'
+						}`}
+					>
+						{color.labValues && ` lab(${color.labValues.l} ${color.labValues.a} ${color.labValues.b})`}
 					</p>
 					{color.createdAt && (
 						<div className='flex items-center gap-1.5 mt-2'>
