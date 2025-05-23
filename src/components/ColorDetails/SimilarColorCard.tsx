@@ -46,7 +46,7 @@ export default function SimilarColorCard({ color }: SimilarColorCardProps) {
 						isDark ? 'text-gray-100' : 'text-gray-700'
 					}`}
 				>
-					{color.name}
+					{color.name} {color.alternativeName && `(${color.alternativeName})`}
 				</p>
 				<div
 					className='aspect-square w-full rounded-xl shadow-sm transition-transform hover:scale-105'
