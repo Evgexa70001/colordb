@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { PantoneColor } from '@/types'
-import { getColors } from '@lib/colors'
+import { getColors, updateColor } from '@lib/colors'
 import { Link } from 'react-router-dom'
+import { Dialog } from '@headlessui/react'
+import { X } from 'lucide-react'
+import { deleteField } from 'firebase/firestore'
 
 // TODO: Получить реальные цвета из props или контекста
 // const exampleColors: PantoneColor[] = [];
@@ -67,11 +70,20 @@ function ShelfPart({
 	partName,
 	shelfCount,
 	colors,
+	setSelectedCell,
 }: {
 	shelfId: number
 	partName: string // 'Левая часть' или 'Правая часть'
 	shelfCount: number
 	colors: PantoneColor[]
+	setSelectedCell: (cell: {
+		shelfId: number
+		sectionNumber: number
+		shelfLevel: number
+		part?: string
+		rowIdx: number
+		bucketIdx: number
+	}) => void
 }) {
 	const usedColorIds = new Set<string>()
 	const part = partName.toLowerCase().includes('левая') ? 'Левая' : 'Правая'
@@ -95,7 +107,7 @@ function ShelfPart({
 									shelfLevel,
 									part
 								)
-								const bucketCount = Math.max(8, shelfColors.length)
+								const bucketCount = Math.max(8, shelfColors.length + 1)
 								const buckets = []
 								for (let i = 0; i < bucketCount; i++) {
 									buckets.push(i)
@@ -170,6 +182,19 @@ function ShelfPart({
 																				: '')
 																		: 'Свободно'
 																}
+																onClick={() =>
+																	setSelectedCell({
+																		shelfId,
+																		sectionNumber,
+																		shelfLevel,
+																		part:
+																			typeof part !== 'undefined'
+																				? part
+																				: undefined,
+																		rowIdx,
+																		bucketIdx,
+																	})
+																}
 															>
 																{color ? (
 																	<>
@@ -207,10 +232,19 @@ function ShelfSinglePart({
 	shelfId,
 	shelfCount,
 	colors,
+	setSelectedCell,
 }: {
 	shelfId: number
 	shelfCount: number
 	colors: PantoneColor[]
+	setSelectedCell: (cell: {
+		shelfId: number
+		sectionNumber: number
+		shelfLevel: number
+		part?: string
+		rowIdx: number
+		bucketIdx: number
+	}) => void
 }) {
 	const usedColorIds = new Set<string>()
 
@@ -231,7 +265,7 @@ function ShelfSinglePart({
 									sectionNumber,
 									shelfLevel
 								)
-								const bucketCount = Math.max(8, shelfColors.length)
+								const bucketCount = Math.max(8, shelfColors.length + 1)
 								const buckets = []
 								for (let i = 0; i < bucketCount; i++) {
 									buckets.push(i)
@@ -306,6 +340,16 @@ function ShelfSinglePart({
 																				: '')
 																		: 'Свободно'
 																}
+																onClick={() =>
+																	setSelectedCell({
+																		shelfId,
+																		sectionNumber,
+																		shelfLevel,
+																		part: undefined,
+																		rowIdx,
+																		bucketIdx,
+																	})
+																}
 															>
 																{color ? (
 																	<>
@@ -343,6 +387,17 @@ export default function ShelvesView() {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
+	// Новое состояние для выбранной ячейки и поиска
+	const [selectedCell, setSelectedCell] = useState<{
+		shelfId: number
+		sectionNumber: number
+		shelfLevel: number
+		part?: string
+		rowIdx: number
+		bucketIdx: number
+	} | null>(null)
+	const [search, setSearch] = useState('')
+
 	useEffect(() => {
 		setLoading(true)
 		getColors()
@@ -362,6 +417,70 @@ export default function ShelvesView() {
 	if (error) {
 		return <div className='p-6 text-lg text-red-600'>{error}</div>
 	}
+
+	// Функция для генерации shelfLocation по selectedCell
+	function getCellLocation(cell: typeof selectedCell) {
+		if (!cell) return ''
+		if (cell.part) {
+			return `${cell.shelfId} ${cell.part} ${cell.sectionNumber}/${
+				cell.shelfLevel
+			}/${cell.rowIdx + 1}/${(cell.bucketIdx % BUCKETS_PER_ROW) + 1}`
+		} else {
+			return `${cell.shelfId} ${cell.sectionNumber}/${cell.shelfLevel}/${
+				cell.rowIdx + 1
+			}/${(cell.bucketIdx % BUCKETS_PER_ROW) + 1}`
+		}
+	}
+
+	// Найти цвет в выбранной ячейке
+	const currentCellColor = selectedCell
+		? findColorByLocation(colors, getCellLocation(selectedCell))
+		: null
+
+	// Обработчик выбора цвета
+	async function handleSelectColor(color: PantoneColor) {
+		if (!selectedCell) return
+		const location = getCellLocation(selectedCell)
+		await updateColor(color.id, { shelfLocation: location })
+		setColors(prev =>
+			prev.map(c =>
+				c.id === color.id
+					? { ...c, shelfLocation: location }
+					: c.shelfLocation === location
+					? { ...c, shelfLocation: undefined }
+					: c
+			)
+		)
+		setSelectedCell(null)
+		setSearch('')
+	}
+
+	// Обработчик очистки ячейки
+	async function handleClearCell() {
+		if (!selectedCell) return
+		const location = getCellLocation(selectedCell)
+		const color = colors.find(
+			c => c.shelfLocation && c.shelfLocation.replace(/\\/g, '/') === location
+		)
+		console.log('Очистка ячейки:', location, color)
+		if (color) {
+			await updateColor(color.id, { shelfLocation: deleteField() } as any)
+			setColors(prev =>
+				prev.map(c =>
+					c.id === color.id ? { ...c, shelfLocation: undefined } : c
+				)
+			)
+		}
+		setSelectedCell(null)
+		setSearch('')
+	}
+
+	// Перед рендером модалки:
+	const cellLocation = selectedCell ? getCellLocation(selectedCell) : ''
+	const canClearCell =
+		currentCellColor &&
+		currentCellColor.shelfLocation &&
+		currentCellColor.shelfLocation.replace(/\\/g, '/') === cellLocation
 
 	return (
 		<div className='p-6'>
@@ -388,6 +507,7 @@ export default function ShelvesView() {
 							shelfId={shelfId}
 							shelfCount={SHELF_COUNT}
 							colors={colors}
+							setSelectedCell={setSelectedCell}
 						/>
 					</div>
 				))}
@@ -406,6 +526,7 @@ export default function ShelvesView() {
 								partName='Левая часть'
 								shelfCount={SHELF_COUNT_2_5}
 								colors={colors}
+								setSelectedCell={setSelectedCell}
 							/>
 							<div className='my-4 border-t border-gray-200 sm:hidden' />
 							<ShelfPart
@@ -413,11 +534,78 @@ export default function ShelvesView() {
 								partName='Правая часть'
 								shelfCount={SHELF_COUNT_2_5}
 								colors={colors}
+								setSelectedCell={setSelectedCell}
 							/>
 						</div>
 					</div>
 				))}
 			</div>
+
+			{/* Модальное окно выбора цвета */}
+			<Dialog
+				open={!!selectedCell}
+				onClose={() => setSelectedCell(null)}
+				className='relative z-50'
+			>
+				<div className='fixed inset-0 bg-black/30' aria-hidden='true' />
+				<div className='fixed inset-0 flex items-center justify-center p-4'>
+					<Dialog.Panel className='mx-auto max-w-lg w-full rounded-lg p-6 bg-white'>
+						<div className='flex justify-between items-center mb-4'>
+							<Dialog.Title className='text-lg font-bold'>
+								Выбор цвета
+							</Dialog.Title>
+							<button
+								onClick={() => setSelectedCell(null)}
+								className='p-2 rounded-full hover:bg-gray-100'
+							>
+								<X className='w-5 h-5' />
+							</button>
+						</div>
+						<input
+							type='text'
+							placeholder='Поиск по названию'
+							value={search}
+							onChange={e => setSearch(e.target.value)}
+							className='mb-2 p-2 border rounded w-full'
+						/>
+						<div className='max-h-60 overflow-y-auto'>
+							{colors
+								.filter(c =>
+									c.name.toLowerCase().includes(search.toLowerCase())
+								)
+								.map(color => (
+									<div
+										key={color.id}
+										className='p-2 hover:bg-gray-100 cursor-pointer rounded flex items-center gap-2'
+										style={{ backgroundColor: color.hex + '22' }}
+										onClick={() => handleSelectColor(color)}
+									>
+										<div
+											className='w-6 h-6 rounded'
+											style={{ backgroundColor: color.hex }}
+										/>
+										<div className='flex flex-col'>
+											<span>{color.name}</span>
+											{color.alternativeName && (
+												<span className='text-xs text-gray-500'>
+													{color.alternativeName}
+												</span>
+											)}
+										</div>
+									</div>
+								))}
+						</div>
+						{canClearCell && (
+							<button
+								className='mt-4 w-full py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-semibold'
+								onClick={handleClearCell}
+							>
+								Очистить ячейку
+							</button>
+						)}
+					</Dialog.Panel>
+				</div>
+			</Dialog>
 		</div>
 	)
 }

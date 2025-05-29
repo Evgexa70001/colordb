@@ -548,6 +548,44 @@ export default function ColorCard({
 		[color.id, localTasks]
 	)
 
+	function parseShelfLocation(loc?: string) {
+		if (!loc) return null
+		const normalized = loc.replace(/\\/g, '/').trim()
+		// Сначала ищем часть
+		const partMatch = normalized.match(
+			/^(\d+)\s+(Левая|Правая)\s+(\d+)\/(\d+)(?:\/(\d+))?(?:\/(\d+))?$/
+		)
+		if (partMatch) {
+			return {
+				labels: ['Стеллаж', 'Часть', 'Секция/полка', 'Ряд', 'Позиция'],
+				values: [
+					partMatch[1],
+					partMatch[2] + ' часть',
+					partMatch[3] + '/' + partMatch[4],
+					partMatch[5] || '',
+					partMatch[6] || '',
+				],
+			}
+		}
+		// Без части
+		const simpleMatch = normalized.match(
+			/^(\d+)\s+(\d+)\/(\d+)(?:\/(\d+))?(?:\/(\d+))?$/
+		)
+		if (simpleMatch) {
+			return {
+				labels: ['Стеллаж', 'Секция/полка', 'Ряд', 'Позиция'],
+				values: [
+					simpleMatch[1],
+					simpleMatch[2] + '/' + simpleMatch[3],
+					simpleMatch[4] || '',
+					simpleMatch[5] || '',
+				],
+			}
+		}
+		return null
+	}
+	const parsedLocation = parseShelfLocation(color.shelfLocation)
+
 	return (
 		<div
 			className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
@@ -841,7 +879,7 @@ export default function ColorCard({
 								: 'bg-lime-50/80 hover:bg-lime-50 border border-lime-100'
 						}`}
 					>
-						<div className='flex items-center gap-2 mb-2'>
+						<div className='flex flex-col gap-1 mb-2'>
 							<span
 								className={`text-xs sm:text-sm font-medium ${
 									isDark ? 'text-lime-300' : 'text-lime-700'
@@ -849,13 +887,29 @@ export default function ColorCard({
 							>
 								Расположение:
 							</span>
-							<span
-								className={`text-xs sm:text-sm font-mono ${
-									isDark ? 'text-lime-200' : 'text-lime-900'
-								}`}
-							>
-								{color.shelfLocation}
-							</span>
+							{parsedLocation && (
+								<div className='flex flex-col gap-0.5'>
+									<div className='flex gap-2 text-[10px] sm:text-xs text-gray-500 font-semibold'>
+										{parsedLocation.labels.map((label, i) => (
+											<span key={i}>{label}</span>
+										))}
+									</div>
+									<div className='flex gap-2 text-xs sm:text-sm font-mono'>
+										{parsedLocation.values.filter(Boolean).map((val, i) => (
+											<span key={i}>{val}</span>
+										))}
+									</div>
+								</div>
+							)}
+							{!parsedLocation && (
+								<span
+									className={`text-xs sm:text-sm font-mono ${
+										isDark ? 'text-lime-200' : 'text-lime-900'
+									}`}
+								>
+									{color.shelfLocation}
+								</span>
+							)}
 						</div>
 					</div>
 				)}
