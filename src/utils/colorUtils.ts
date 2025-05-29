@@ -1,3 +1,18 @@
+import pantoneDataRaw from '../data/pantone.json'
+
+// Новая структура: [{ pantone: string, code: string, lab: {l,a,b}, hex: string }]
+const pantoneData = (pantoneDataRaw.colors || []).map((entry: any) => {
+	const [l, a, b] = entry.components;
+	const lab = { l, a, b };
+	const hex = labToHex(lab).toLowerCase();
+	return {
+		pantone: entry.name,
+		code: entry.code,
+		lab,
+		hex,
+	};
+});
+
 export function isValidHexColor(hex: string): boolean {
 	return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)
 }
@@ -376,4 +391,23 @@ export function calculateDeltaE(
 	)
 
 	return dE
+}
+
+export function findPantoneByHex(hex: string) {
+	const normalizedHex = normalizeHexColor(hex).toLowerCase();
+	return pantoneData.find((color: any) => color.hex === normalizedHex);
+}
+
+export function findClosestPantoneByLab(lab: { l: number; a: number; b: number }) {
+	let minDelta = Infinity;
+	let closest = null;
+	for (const color of pantoneData) {
+		const pantoneLab = hexToLab(color.hex);
+		const deltaE = calculateDeltaE(lab, pantoneLab);
+		if (deltaE < minDelta) {
+			minDelta = deltaE;
+			closest = { ...color, lab: pantoneLab, deltaE };
+		}
+	}
+	return closest;
 }

@@ -18,8 +18,8 @@ import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
 // import { doc, updateDoc, increment } from 'firebase/firestore'
 import toast from 'react-hot-toast'
-// import { labToHex } from '@utils/colorUtils'
 import { incrementUsageCount } from '@lib/colors'
+import { findPantoneByHex, findClosestPantoneByLab, hexToLab } from '@/utils/colorUtils'
 
 interface ColorCardProps {
 	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
@@ -380,6 +380,11 @@ export default function ColorCard({
 		}
 	}
 
+	// Pantone logic
+	const pantoneMatch = findPantoneByHex(color.hex)
+	const lab = color.labValues || hexToLab(color.hex)
+	const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+
 	return (
 		<div
 			className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
@@ -398,19 +403,11 @@ export default function ColorCard({
 				hasSimilarRecipes
 					? isDark
 						? 'border-rose-500/50'
-						: 'border-rose-400'
+						: 'border-rose-500/80'
 					: isDark
-					? 'border-gray-700/50'
-					: 'border-gray-200/50'
-			} ${hasSimilarRecipes ? 'border-2' : 'border'}
-      before:absolute before:inset-0 before:rounded-xl before:transition-all before:duration-500
-      before:opacity-0 group-hover:before:opacity-100
-      ${
-				isDark
-					? 'before:bg-gradient-to-t before:from-blue-500/10 before:via-transparent before:to-transparent'
-					: 'before:bg-gradient-to-t before:from-blue-500/5 before:via-transparent before:to-transparent'
-			}
-      `}
+					? 'border-gray-700'
+					: 'border-gray-200'
+			}`}
 			onClick={handleCardClick}
 		>
 			<div
@@ -943,6 +940,19 @@ export default function ColorCard({
 							</>
 						)}
 					</div>
+				</div>
+
+				<div className="px-4 pt-4 pb-2">
+					{/* Pantone info */}
+					{pantoneMatch ? (
+						<div className="mb-2 text-sm text-blue-700 font-semibold">
+							Pantone: {pantoneMatch.pantone} <span className="text-gray-500">({pantoneMatch.hex})</span>
+						</div>
+					) : closestPantone ? (
+						<div className="mb-2 text-sm text-yellow-700 font-semibold">
+							Ближайший Pantone: {closestPantone.pantone} <span className="text-gray-500">({closestPantone.hex})</span> ΔE={closestPantone.deltaE.toFixed(2)}
+						</div>
+					) : null}
 				</div>
 			</div>
 		</div>

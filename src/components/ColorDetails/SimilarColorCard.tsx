@@ -1,5 +1,5 @@
 import { useTheme } from '@contexts/ThemeContext'
-import { normalizeHexColor } from '@utils/colorUtils'
+import { normalizeHexColor, findPantoneByHex, findClosestPantoneByLab, hexToLab } from '@utils/colorUtils'
 import type { PantoneColor } from '@/types'
 
 interface SimilarColorCardProps {
@@ -32,6 +32,11 @@ export default function SimilarColorCard({ color }: SimilarColorCardProps) {
 		return 'Явное различие'
 	}
 
+	// Pantone logic
+	const pantoneMatch = findPantoneByHex(color.hex)
+	const lab = color.labValues || hexToLab(color.hex)
+	const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+
 	return (
 		<div
 			className={`p-4 rounded-xl transition-all duration-200 ${
@@ -59,6 +64,16 @@ export default function SimilarColorCard({ color }: SimilarColorCardProps) {
 				>
 					{normalizeHexColor(color.hex)}
 				</p>
+				{/* Pantone info */}
+				{pantoneMatch ? (
+					<div className="mb-1 text-xs text-blue-700 font-semibold">
+						Pantone: {pantoneMatch.pantone} <span className="text-gray-500">({pantoneMatch.hex})</span>
+					</div>
+				) : closestPantone ? (
+					<div className="mb-1 text-xs text-yellow-700 font-semibold">
+						Ближайший Pantone: {closestPantone.pantone} <span className="text-gray-500">({closestPantone.hex})</span> ΔE={closestPantone.deltaE.toFixed(2)}
+					</div>
+				) : null}
 			</div>
 			<div
 				className={`text-xs mt-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
