@@ -133,6 +133,8 @@ export default function NewColorModal({
 		colorInputMode: ColorInputMode
 		labValues: { l: string; a: string; b: string }
 	}>>([])
+	const [shelfLocation, setShelfLocation] = useState('')
+	const [shelfPart, setShelfPart] = useState('')
 
 	const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false)
 
@@ -150,6 +152,8 @@ export default function NewColorModal({
 		setManager('')
 		setRecipes([])
 		setAdditionalColors([])
+		setShelfLocation('')
+		setShelfPart('')
 	}
 
 	const addRecipe = () => {
@@ -265,6 +269,14 @@ export default function NewColorModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		try {
+			const shelfNum = shelfLocation.split(' ')[0];
+			let formattedShelfLocation = '';
+			if (["2","3","4","5"].includes(shelfNum) && shelfPart) {
+				formattedShelfLocation = `${shelfNum} ${shelfPart} ${shelfLocation.split(' ').slice(-1)[0]}`;
+			} else {
+				formattedShelfLocation = shelfLocation.trim();
+			}
+
 			const colorData: ColorData = {
 				name: name.trim(),
 				alternativeName: alternativeName.trim(),
@@ -325,7 +337,8 @@ ${recipe.items
 						labValues: colorLabValues,
 						labSource: color.colorInputMode === 'lab' ? 'manual' : 'converted'
 					}
-				})
+				}),
+				shelfLocation: formattedShelfLocation,
 			}
 
 			if (!colorData.name) {
@@ -414,6 +427,7 @@ ${recipe.items
 			setCategory(initialData.category === UNCATEGORIZED ? '' : initialData.category)
 			setNotes(initialData.notes || '')
 			setManager(initialData.manager || '')
+			setShelfLocation(initialData.shelfLocation || '')
 
 			// Парсим рецепты если они есть
 			if (initialData.recipe) {
@@ -476,8 +490,18 @@ ${recipe.items
 						: { l: '0', a: '0', b: '0' },
 				})) || []
 			)
+
+			// Попытка определить часть стеллажа из shelfLocation
+			const match = initialData.shelfLocation?.match(/^(\d+)\s*(Левая|Правая)?\s*(\d+\/\d+)$/);
+			if (match) {
+				setShelfPart(match[2] || '');
+			} else {
+				setShelfPart('');
+			}
+			setShelfLocation(initialData.shelfLocation || '');
 		} else {
 			resetForm()
+			setShelfPart('')
 		}
 	}, [isOpen, initialData])
 
@@ -560,6 +584,65 @@ ${recipe.items
 										placeholder='Необязательное поле'
 									/>
 								</div>
+							</div>
+						</div>
+						{/* Новое поле: расположение на стеллаже */}
+						<div>
+							<div className='flex gap-2'>
+								<div className='w-1/3'>
+									<Input
+										id='shelfNumber'
+										value={shelfLocation.split(' ')[0] || ''}
+										onChange={e => {
+											const newShelf = e.target.value.replace(/[^0-9]/g, '');
+											// Если стеллаж 2-5, сбрасываем часть если меняется стеллаж
+											if (!["2","3","4","5"].includes(newShelf)) setShelfPart('');
+											setShelfLocation(prev => {
+												const parts = prev.split(' ');
+												parts[0] = newShelf;
+												return parts.join(' ');
+											});
+										}}
+										label='Стеллаж'
+										placeholder='Напр: 2'
+									/>
+								</div>
+								{/* Для стеллажей 2-5 показываем выбор части */}
+								{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) && (
+									<div className='w-1/3'>
+										<Dropdown
+											items={['Левая', 'Правая']}
+											value={shelfPart}
+											onChange={value => setShelfPart(value)}
+											placeholder='Часть'
+											className='mt-1'
+										/>
+									</div>
+								)}
+								<div className='w-1/3'>
+									<Input
+										id='sectionShelf'
+										value={(() => {
+											const parts = shelfLocation.split(' ');
+											return parts.slice(-1)[0] || '';
+										})()}
+										onChange={e => {
+											setShelfLocation(prev => {
+												const parts = prev.split(' ');
+												// section/shelfLevel всегда последний
+												if (parts.length === 1) return parts[0] + ' ' + e.target.value;
+												if (parts.length === 2 && shelfPart) return parts[0] + ' ' + shelfPart + ' ' + e.target.value;
+												parts[parts.length - 1] = e.target.value;
+												return parts.join(' ');
+											});
+										}}
+										label='Секция/Полка'
+										placeholder='Напр: 1/4'
+									/>
+								</div>
+							</div>
+							<div className='text-xs text-gray-500 mt-1'>
+								Формат: <b>{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) ? '2 Левая 1/4' : '1 2/4'}</b> — номер стеллажа{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) ? ', часть (левая/правая),' : ''} номер секции/номер полки
 							</div>
 						</div>
 						{/* Color Input Section */}

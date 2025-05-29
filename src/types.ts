@@ -56,6 +56,7 @@ export interface PantoneColor {
 		deltaE2000: number
 		deltaE76: number
 	}
+	shelfLocation?: string
 }
 
 export interface ColorData {
@@ -73,6 +74,7 @@ export interface ColorData {
 	labValues?: { l: number; a: number; b: number }
 	labSource?: 'manual' | 'converted'
 	additionalColors?: AdditionalColor[]
+	shelfLocation?: string
 }
 
 // Modal Props

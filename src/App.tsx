@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import PrivateRoute from './components/PrivateRoute';
+import ShelvesView from './pages/ShelvesView';
 
 function App() {
   return (
@@ -29,6 +30,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Equipment />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/shelves"
+              element={
+                <PrivateRoute>
+                  <ShelvesView />
                 </PrivateRoute>
               }
             />

@@ -76,6 +76,17 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
                     }`}>
                     Оборудование
                   </Link>
+                  <Link
+                    to="/shelves"
+                    className={`text-lg font-medium ${
+                      location.pathname === '/shelves'
+                        ? 'text-blue-500'
+                        : isDark
+                        ? 'text-lime-300 hover:text-white'
+                        : 'text-lime-700 hover:text-lime-900'
+                    }`}>
+                    Стеллажи
+                  </Link>
                 </nav>
               </div>
             </div>
@@ -137,6 +148,17 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
                 : 'text-gray-600 hover:text-gray-900'
             }`}>
             <span className="text-sm font-medium">Оборудование</span>
+          </Link>
+          <Link
+            to="/shelves"
+            className={`flex flex-col items-center px-4 py-2 rounded-xl ${
+              location.pathname === '/shelves'
+                ? 'text-lime-500'
+                : isDark
+                ? 'text-lime-300 hover:text-white'
+                : 'text-lime-700 hover:text-lime-900'
+            }`}>
+            <span className="text-sm font-medium">Стеллажи</span>
           </Link>
         </div>
       </div>

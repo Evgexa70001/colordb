@@ -778,6 +778,21 @@ export default function ColorCard({
 					</div>
 				)}
 
+				{color.shelfLocation && (
+					<div
+						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
+							isDark
+								? 'bg-lime-900/20 hover:bg-lime-900/30 border border-lime-800/30'
+								: 'bg-lime-50/80 hover:bg-lime-50 border border-lime-100'
+						}`}
+					>
+						<div className='flex items-center gap-2 mb-2'>
+							<span className={`text-xs sm:text-sm font-medium ${isDark ? 'text-lime-300' : 'text-lime-700'}`}>Расположение:</span>
+							<span className={`text-xs sm:text-sm font-mono ${isDark ? 'text-lime-200' : 'text-lime-900'}`}>{color.shelfLocation}</span>
+						</div>
+					</div>
+				)}
+
 				{color.linkedColors && color.linkedColors.length > 0 && (
 					<div
 						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
