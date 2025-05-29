@@ -57,6 +57,7 @@ export interface PantoneColor {
 		deltaE76: number
 	}
 	shelfLocation?: string
+	tasks?: Array<{ id: string; text: string; status: 'open' | 'done' }>
 }
 
 export interface ColorData {
@@ -75,6 +76,7 @@ export interface ColorData {
 	labSource?: 'manual' | 'converted'
 	additionalColors?: AdditionalColor[]
 	shelfLocation?: string
+	tasks?: Array<{ id: string; text: string; status: 'open' | 'done' }>
 }
 
 // Modal Props

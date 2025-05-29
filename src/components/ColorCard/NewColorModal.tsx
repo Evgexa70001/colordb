@@ -126,17 +126,22 @@ export default function NewColorModal({
 	const [recipes, setRecipes] = useState<Recipe[]>([])
 	const [colorInputMode, setColorInputMode] = useState<ColorInputMode>('hex')
 	const [labValues, setLabValues] = useState({ l: '0', a: '0', b: '0' })
-	const [additionalColors, setAdditionalColors] = useState<Array<{
-		name: string
-		hex: string
-		anilox: string
-		colorInputMode: ColorInputMode
-		labValues: { l: string; a: string; b: string }
-	}>>([])
+	const [additionalColors, setAdditionalColors] = useState<
+		Array<{
+			name: string
+			hex: string
+			anilox: string
+			colorInputMode: ColorInputMode
+			labValues: { l: string; a: string; b: string }
+		}>
+	>([])
 	const [shelfLocation, setShelfLocation] = useState('')
 	const [shelfPart, setShelfPart] = useState('')
-
 	const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false)
+	const [tasks, setTasks] = useState<
+		Array<{ id: string; text: string; status: 'open' | 'done' }>
+	>([])
+	const [newTaskText, setNewTaskText] = useState('')
 
 	const resetForm = () => {
 		setName('')
@@ -154,6 +159,8 @@ export default function NewColorModal({
 		setAdditionalColors([])
 		setShelfLocation('')
 		setShelfPart('')
+		setTasks([])
+		setNewTaskText('')
 	}
 
 	const addRecipe = () => {
@@ -269,24 +276,27 @@ export default function NewColorModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		try {
-			const shelfNum = shelfLocation.split(' ')[0];
-			let formattedShelfLocation = '';
-			if (["2","3","4","5"].includes(shelfNum) && shelfPart) {
-				formattedShelfLocation = `${shelfNum} ${shelfPart} ${shelfLocation.split(' ').slice(-1)[0]}`;
+			const shelfNum = shelfLocation.split(' ')[0]
+			let formattedShelfLocation = ''
+			if (['2', '3', '4', '5'].includes(shelfNum) && shelfPart) {
+				formattedShelfLocation = `${shelfNum} ${shelfPart} ${
+					shelfLocation.split(' ').slice(-1)[0]
+				}`
 			} else {
-				formattedShelfLocation = shelfLocation.trim();
+				formattedShelfLocation = shelfLocation.trim()
 			}
 
 			const colorData: ColorData = {
 				name: name.trim(),
 				alternativeName: alternativeName.trim(),
-				hex: colorInputMode === 'lab'
-					? labToHex({
-							l: parseFloat(labValues.l),
-							a: parseFloat(labValues.a),
-							b: parseFloat(labValues.b),
-						})
-					: normalizeHexColor(hex),
+				hex:
+					colorInputMode === 'lab'
+						? labToHex({
+								l: parseFloat(labValues.l),
+								a: parseFloat(labValues.a),
+								b: parseFloat(labValues.b),
+						  })
+						: normalizeHexColor(hex),
 				category: category || UNCATEGORIZED,
 				recipe: recipes
 					.map(
@@ -307,45 +317,54 @@ ${recipe.items
 				isVerified,
 				notes: notes.trim(),
 				manager: manager.trim(),
-				labValues: colorInputMode === 'lab' ? {
-					l: parseFloat(labValues.l),
-					a: parseFloat(labValues.a),
-					b: parseFloat(labValues.b),
-				} : hexToLab(normalizeHexColor(hex)),
+				labValues:
+					colorInputMode === 'lab'
+						? {
+								l: parseFloat(labValues.l),
+								a: parseFloat(labValues.a),
+								b: parseFloat(labValues.b),
+						  }
+						: hexToLab(normalizeHexColor(hex)),
 				labSource: colorInputMode === 'lab' ? 'manual' : 'converted',
 				additionalColors: additionalColors.map(color => {
-					const colorHex = color.colorInputMode === 'lab'
-						? labToHex({
-								l: parseFloat(color.labValues.l),
-								a: parseFloat(color.labValues.a),
-								b: parseFloat(color.labValues.b),
-							})
-						: normalizeHexColor(color.hex);
+					const colorHex =
+						color.colorInputMode === 'lab'
+							? labToHex({
+									l: parseFloat(color.labValues.l),
+									a: parseFloat(color.labValues.a),
+									b: parseFloat(color.labValues.b),
+							  })
+							: normalizeHexColor(color.hex)
 
-					const colorLabValues = color.colorInputMode === 'lab' 
-						? {
-							l: parseFloat(color.labValues.l),
-							a: parseFloat(color.labValues.a),
-							b: parseFloat(color.labValues.b),
-						}
-						: hexToLab(colorHex);
+					const colorLabValues =
+						color.colorInputMode === 'lab'
+							? {
+									l: parseFloat(color.labValues.l),
+									a: parseFloat(color.labValues.a),
+									b: parseFloat(color.labValues.b),
+							  }
+							: hexToLab(colorHex)
 
 					return {
 						name: color.name.trim(),
 						hex: colorHex,
 						anilox: color.anilox.trim(),
 						labValues: colorLabValues,
-						labSource: color.colorInputMode === 'lab' ? 'manual' : 'converted'
+						labSource: color.colorInputMode === 'lab' ? 'manual' : 'converted',
 					}
 				}),
 				shelfLocation: formattedShelfLocation,
+				tasks,
 			}
 
 			if (!colorData.name) {
 				throw new Error('Название цвета обязательно')
 			}
 
-			if (colorInputMode === 'lab' && (!labValues.l || !labValues.a || !labValues.b)) {
+			if (
+				colorInputMode === 'lab' &&
+				(!labValues.l || !labValues.a || !labValues.b)
+			) {
 				throw new Error('Все значения LAB должны быть заполнены')
 			}
 
@@ -354,7 +373,9 @@ ${recipe.items
 			onClose()
 		} catch (error) {
 			console.error('Error submitting color:', error)
-			toast.error(error instanceof Error ? error.message : 'Ошибка при сохранении цвета')
+			toast.error(
+				error instanceof Error ? error.message : 'Ошибка при сохранении цвета'
+			)
 		}
 	}
 
@@ -392,20 +413,20 @@ ${recipe.items
 
 	// Обновляем useEffect для инициализации формы
 	useEffect(() => {
-		if (!isOpen) return;
+		if (!isOpen) return
 
 		if (initialData) {
 			// Если есть начальные данные, заполняем форму
 			setName(initialData.name)
 			setAlternativeName(initialData.alternativeName || '')
-			
+
 			// Если есть LAB значения, используем их как первичный источник
 			if (initialData.labValues) {
 				setColorInputMode('lab')
 				const newLabValues = {
 					l: initialData.labValues.l.toFixed(2),
 					a: initialData.labValues.a.toFixed(2),
-					b: initialData.labValues.b.toFixed(2)
+					b: initialData.labValues.b.toFixed(2),
 				}
 				setLabValues(newLabValues)
 				// HEX генерируем из LAB
@@ -417,14 +438,16 @@ ${recipe.items
 				setLabValues({
 					l: labFromHex.l.toFixed(2),
 					a: labFromHex.a.toFixed(2),
-					b: labFromHex.b.toFixed(2)
+					b: labFromHex.b.toFixed(2),
 				})
 			}
 
 			setCustomers(initialData.customers?.join(', ') || '')
 			setInStock(initialData.inStock)
 			setIsVerified(initialData.isVerified || false)
-			setCategory(initialData.category === UNCATEGORIZED ? '' : initialData.category)
+			setCategory(
+				initialData.category === UNCATEGORIZED ? '' : initialData.category
+			)
 			setNotes(initialData.notes || '')
 			setManager(initialData.manager || '')
 			setShelfLocation(initialData.shelfLocation || '')
@@ -492,16 +515,20 @@ ${recipe.items
 			)
 
 			// Попытка определить часть стеллажа из shelfLocation
-			const match = initialData.shelfLocation?.match(/^(\d+)\s*(Левая|Правая)?\s*(\d+\/\d+)$/);
+			const match = initialData.shelfLocation?.match(
+				/^(\d+)\s*(Левая|Правая)?\s*(\d+\/\d+)$/
+			)
 			if (match) {
-				setShelfPart(match[2] || '');
+				setShelfPart(match[2] || '')
 			} else {
-				setShelfPart('');
+				setShelfPart('')
 			}
-			setShelfLocation(initialData.shelfLocation || '');
+			setShelfLocation(initialData.shelfLocation || '')
+			setTasks(initialData.tasks || [])
 		} else {
 			resetForm()
 			setShelfPart('')
+			setTasks([])
 		}
 	}, [isOpen, initialData])
 
@@ -594,21 +621,22 @@ ${recipe.items
 										id='shelfNumber'
 										value={shelfLocation.split(' ')[0] || ''}
 										onChange={e => {
-											const newShelf = e.target.value.replace(/[^0-9]/g, '');
+											const newShelf = e.target.value.replace(/[^0-9]/g, '')
 											// Если стеллаж 2-5, сбрасываем часть если меняется стеллаж
-											if (!["2","3","4","5"].includes(newShelf)) setShelfPart('');
+											if (!['2', '3', '4', '5'].includes(newShelf))
+												setShelfPart('')
 											setShelfLocation(prev => {
-												const parts = prev.split(' ');
-												parts[0] = newShelf;
-												return parts.join(' ');
-											});
+												const parts = prev.split(' ')
+												parts[0] = newShelf
+												return parts.join(' ')
+											})
 										}}
 										label='Стеллаж'
 										placeholder='Напр: 2'
 									/>
 								</div>
 								{/* Для стеллажей 2-5 показываем выбор части */}
-								{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) && (
+								{['2', '3', '4', '5'].includes(shelfLocation.split(' ')[0]) && (
 									<div className='w-1/3'>
 										<Dropdown
 											items={['Левая', 'Правая']}
@@ -623,18 +651,22 @@ ${recipe.items
 									<Input
 										id='sectionShelf'
 										value={(() => {
-											const parts = shelfLocation.split(' ');
-											return parts.slice(-1)[0] || '';
+											const parts = shelfLocation.split(' ')
+											return parts.slice(-1)[0] || ''
 										})()}
 										onChange={e => {
 											setShelfLocation(prev => {
-												const parts = prev.split(' ');
+												const parts = prev.split(' ')
 												// section/shelfLevel всегда последний
-												if (parts.length === 1) return parts[0] + ' ' + e.target.value;
-												if (parts.length === 2 && shelfPart) return parts[0] + ' ' + shelfPart + ' ' + e.target.value;
-												parts[parts.length - 1] = e.target.value;
-												return parts.join(' ');
-											});
+												if (parts.length === 1)
+													return parts[0] + ' ' + e.target.value
+												if (parts.length === 2 && shelfPart)
+													return (
+														parts[0] + ' ' + shelfPart + ' ' + e.target.value
+													)
+												parts[parts.length - 1] = e.target.value
+												return parts.join(' ')
+											})
 										}}
 										label='Секция/Полка'
 										placeholder='Напр: 1/4'
@@ -642,7 +674,17 @@ ${recipe.items
 								</div>
 							</div>
 							<div className='text-xs text-gray-500 mt-1'>
-								Формат: <b>{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) ? '2 Левая 1/4' : '1 2/4'}</b> — номер стеллажа{["2","3","4","5"].includes(shelfLocation.split(' ')[0]) ? ', часть (левая/правая),' : ''} номер секции/номер полки
+								Формат:{' '}
+								<b>
+									{['2', '3', '4', '5'].includes(shelfLocation.split(' ')[0])
+										? '2 Левая 1/4'
+										: '1 2/4'}
+								</b>{' '}
+								— номер стеллажа
+								{['2', '3', '4', '5'].includes(shelfLocation.split(' ')[0])
+									? ', часть (левая/правая),'
+									: ''}{' '}
+								номер секции/номер полки
 							</div>
 						</div>
 						{/* Color Input Section */}
@@ -702,8 +744,8 @@ ${recipe.items
 											id='lab-l'
 											value={labValues.l}
 											onChange={e => {
-												const value = e.target.value.replace(',', '.');
-												setLabValues(prev => ({ ...prev, l: value }));
+												const value = e.target.value.replace(',', '.')
+												setLabValues(prev => ({ ...prev, l: value }))
 											}}
 											required
 											type='text'
@@ -715,8 +757,8 @@ ${recipe.items
 											id='lab-a'
 											value={labValues.a}
 											onChange={e => {
-												const value = e.target.value.replace(',', '.');
-												setLabValues(prev => ({ ...prev, a: value }));
+												const value = e.target.value.replace(',', '.')
+												setLabValues(prev => ({ ...prev, a: value }))
 											}}
 											required
 											type='text'
@@ -728,8 +770,8 @@ ${recipe.items
 											id='lab-b'
 											value={labValues.b}
 											onChange={e => {
-												const value = e.target.value.replace(',', '.');
-												setLabValues(prev => ({ ...prev, b: value }));
+												const value = e.target.value.replace(',', '.')
+												setLabValues(prev => ({ ...prev, b: value }))
 											}}
 											required
 											type='text'
@@ -1222,10 +1264,10 @@ ${recipe.items
 															backgroundColor:
 																color.colorInputMode === 'lab'
 																	? labToHex({
-																		l: parseFloat(color.labValues.l),
-																		a: parseFloat(color.labValues.a),
-																		b: parseFloat(color.labValues.b),
-																  })
+																			l: parseFloat(color.labValues.l),
+																			a: parseFloat(color.labValues.a),
+																			b: parseFloat(color.labValues.b),
+																	  })
 																	: normalizeHexColor(color.hex),
 															borderColor: isDark
 																? 'rgba(75, 85, 99, 0.6)'
@@ -1246,6 +1288,84 @@ ${recipe.items
 								>
 									Добавить цвет
 								</Button>
+							</div>
+						</div>
+
+						<div>
+							<label className={labelClasses}>Задачи/замечания</label>
+							<ul className='mb-2'>
+								{tasks.map((task, idx) => (
+									<li key={task.id} className='flex items-center gap-2 mb-1'>
+										<span
+											className={
+												task.status === 'done'
+													? 'line-through text-green-600'
+													: ''
+											}
+										>
+											{task.text}
+										</span>
+										<span
+											className={`text-xs ${
+												task.status === 'done'
+													? 'text-green-600'
+													: 'text-yellow-600'
+											}`}
+										>
+											{task.status === 'done' ? 'Выполнено' : 'Открыта'}
+										</span>
+										<button
+											type='button'
+											onClick={() =>
+												setTasks(tasks => tasks.filter((_, i) => i !== idx))
+											}
+											className='ml-2 text-red-500 hover:text-red-700'
+										>
+											Удалить
+										</button>
+									</li>
+								))}
+							</ul>
+							<div className='flex gap-2'>
+								<input
+									type='text'
+									className='flex-1 border rounded px-2 py-1'
+									placeholder='Введите задачу или замечание'
+									value={newTaskText}
+									onChange={e => setNewTaskText(e.target.value)}
+									onKeyDown={e => {
+										if (e.key === 'Enter' && newTaskText.trim()) {
+											setTasks(tasks => [
+												...tasks,
+												{
+													id: `${Date.now()}`,
+													text: newTaskText.trim(),
+													status: 'open',
+												},
+											])
+											setNewTaskText('')
+										}
+									}}
+								/>
+								<button
+									type='button'
+									onClick={() => {
+										if (newTaskText.trim()) {
+											setTasks(tasks => [
+												...tasks,
+												{
+													id: `${Date.now()}`,
+													text: newTaskText.trim(),
+													status: 'open',
+												},
+											])
+											setNewTaskText('')
+										}
+									}}
+									className='px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700'
+								>
+									Добавить
+								</button>
 							</div>
 						</div>
 

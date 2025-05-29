@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
 	Edit,
 	Trash2,
@@ -18,8 +18,14 @@ import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
 // import { doc, updateDoc, increment } from 'firebase/firestore'
 import toast from 'react-hot-toast'
-import { incrementUsageCount } from '@lib/colors'
-import { findPantoneByHex, findClosestPantoneByLab, hexToLab, hexToRgb, rgbToCmyk } from '@/utils/colorUtils'
+import { incrementUsageCount, updateColorTasks } from '@lib/colors'
+import {
+	findPantoneByHex,
+	findClosestPantoneByLab,
+	hexToLab,
+	hexToRgb,
+	rgbToCmyk,
+} from '@/utils/colorUtils'
 
 interface ColorCardProps {
 	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
@@ -79,6 +85,26 @@ export default function ColorCard({
 	const [expandedRecipes, setExpandedRecipes] = useState<number[]>([])
 	const [expandedAdditionalColors, setExpandedAdditionalColors] =
 		useState(false)
+	const [localTasks, setLocalTasks] = useState<
+		Array<{ id: string; text: string; status: 'open' | 'done' }>
+	>(
+		(color.tasks as Array<{
+			id: string
+			text: string
+			status: 'open' | 'done'
+		}>) || []
+	)
+
+	// Синхронизируем локальные задачи при изменении color.tasks
+	useEffect(() => {
+		setLocalTasks(
+			(color.tasks as Array<{
+				id: string
+				text: string
+				status: 'open' | 'done'
+			}>) || []
+		)
+	}, [color.tasks])
 
 	const toggleRecipe = (index: number) => {
 		setExpandedRecipes(prev =>
@@ -412,90 +438,115 @@ export default function ColorCard({
 	const cmyk = rgbToCmyk(...rgb)
 
 	// Prepare additionalColors JSX outside of return
-	const additionalColorsList = color.additionalColors?.map((additionalColor, index) => {
-		// Pantone info for additional color
-		const pantoneMatch = findPantoneByHex(additionalColor.hex)
-		const lab = additionalColor.labValues || hexToLab(additionalColor.hex)
-		const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+	const additionalColorsList = color.additionalColors?.map(
+		(additionalColor, index) => {
+			// Pantone info for additional color
+			const pantoneMatch = findPantoneByHex(additionalColor.hex)
+			const lab = additionalColor.labValues || hexToLab(additionalColor.hex)
+			const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
 
-		return (
-			<div
-				key={index}
-				className={`p-3 rounded-lg ${
-					isDark ? 'bg-violet-900/30' : 'bg-violet-50'
-				}`}
-			>
-				<div className='flex items-center gap-3'>
-					<div
-						className='w-10 h-10 rounded border'
-						style={{ backgroundColor: additionalColor.hex }}
-					/>
-					<div className='space-y-1'>
-						<p
-							className={`text-sm font-medium ${
-							isDark ? 'text-violet-200' : 'text-violet-900'
-						}`}
-						>
-							{additionalColor.name}
-						</p>
+			return (
+				<div
+					key={index}
+					className={`p-3 rounded-lg ${
+						isDark ? 'bg-violet-900/30' : 'bg-violet-50'
+					}`}
+				>
+					<div className='flex items-center gap-3'>
 						<div
-							className={`text-xs ${
-							isDark ? 'text-violet-300' : 'text-violet-700'
-						}`}
-						>
-							<p>Анилокс: {additionalColor.anilox}</p>
-							<p className='font-mono'>{additionalColor.hex}</p>
-							{additionalColor.labValues && (
-								<div className='space-x-2'>
-									<span>
-										L: {additionalColor.labValues.l.toFixed(1)}
-									</span>
-									<span>
-										a: {additionalColor.labValues.a.toFixed(1)}
-									</span>
-									<span>
-										b: {additionalColor.labValues.b.toFixed(1)}
-									</span>
-								</div>
-							)}
-							{/* Pantone info for additional color */}
-							{pantoneMatch ? (
-								<div className="mt-1 text-xs text-blue-700 font-semibold">
-									Pantone: {pantoneMatch.pantone}{' '}
-									<span className="text-gray-500">({pantoneMatch.hex})</span>
-								</div>
-							) : closestPantone ? (
-								<div className="mt-1 text-xs text-yellow-700 font-semibold">
-									Ближайший Pantone: {closestPantone.pantone}{' '}
-									<span className="text-gray-500">({closestPantone.hex})</span>{' '}
-									ΔE={closestPantone.deltaE.toFixed(2)}
-								</div>
-							) : null}
+							className='w-10 h-10 rounded border'
+							style={{ backgroundColor: additionalColor.hex }}
+						/>
+						<div className='space-y-1'>
+							<p
+								className={`text-sm font-medium ${
+									isDark ? 'text-violet-200' : 'text-violet-900'
+								}`}
+							>
+								{additionalColor.name}
+							</p>
+							<div
+								className={`text-xs ${
+									isDark ? 'text-violet-300' : 'text-violet-700'
+								}`}
+							>
+								<p>Анилокс: {additionalColor.anilox}</p>
+								<p className='font-mono'>{additionalColor.hex}</p>
+								{additionalColor.labValues && (
+									<div className='space-x-2'>
+										<span>L: {additionalColor.labValues.l.toFixed(1)}</span>
+										<span>a: {additionalColor.labValues.a.toFixed(1)}</span>
+										<span>b: {additionalColor.labValues.b.toFixed(1)}</span>
+									</div>
+								)}
+								{/* Pantone info for additional color */}
+								{pantoneMatch ? (
+									<div className='mt-1 text-xs text-blue-700 font-semibold'>
+										Pantone: {pantoneMatch.pantone}{' '}
+										<span className='text-gray-500'>({pantoneMatch.hex})</span>
+									</div>
+								) : closestPantone ? (
+									<div className='mt-1 text-xs text-yellow-700 font-semibold'>
+										Ближайший Pantone: {closestPantone.pantone}{' '}
+										<span className='text-gray-500'>
+											({closestPantone.hex})
+										</span>{' '}
+										ΔE={closestPantone.deltaE.toFixed(2)}
+									</div>
+								) : null}
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		)
-	})
+			)
+		}
+	)
 
 	// Функция генерации технологических шагов
 	function generateTechSteps(recipe: ReturnType<typeof parseRecipes>[0]) {
-		const steps = [];
+		const steps = []
 		if (recipe.material) {
-			steps.push(`Подготовьте материал: ${recipe.material}.`);
+			steps.push(`Подготовьте материал: ${recipe.material}.`)
 		}
-		recipe.items.forEach((item) => {
-			steps.push(`Взвесьте и добавьте краску "${item.paint}" — ${item.amount} г.`);
-		});
-		steps.push(`Перемешайте до однородности.`);
+		recipe.items.forEach(item => {
+			steps.push(
+				`Взвесьте и добавьте краску "${item.paint}" — ${item.amount} г.`
+			)
+		})
+		steps.push(`Перемешайте до однородности.`)
 		if (recipe.anilox) {
-			steps.push(`Используйте анилокс: ${recipe.anilox}.`);
+			steps.push(`Используйте анилокс: ${recipe.anilox}.`)
 		}
 		if (recipe.comment) {
-			steps.push(`Примечание: ${recipe.comment}`);
+			steps.push(`Примечание: ${recipe.comment}`)
 		}
-		return steps;
+		return steps
 	}
+
+	const handleTaskDone = useCallback(
+		async (taskId: string) => {
+			const updatedTasks = localTasks.map(task =>
+				task.id === taskId ? { ...task, status: 'done' as 'done' } : task
+			)
+			setLocalTasks(updatedTasks)
+			try {
+				await updateColorTasks(color.id, updatedTasks)
+				// onUpdate нужен только если хотим перезагрузить все данные (например, если есть другие поля)
+				// Можно не вызывать onUpdate, если только задачи меняются
+			} catch (error) {
+				toast.error('Ошибка при обновлении задачи')
+				// Откатываем локально, если ошибка
+				setLocalTasks(
+					(color.tasks as Array<{
+						id: string
+						text: string
+						status: 'open' | 'done'
+					}>) || []
+				)
+			}
+		},
+		[color.id, localTasks]
+	)
 
 	return (
 		<div
@@ -559,8 +610,12 @@ export default function ColorCard({
 					{/* Модели цвета */}
 					<div className='text-xs mt-2 space-y-1'>
 						<div>HEX: {color.hex}</div>
-						<div>CMYK: {cmyk[0]}, {cmyk[1]}, {cmyk[2]}, {cmyk[3]}</div>
-						<div>LAB: {lab.l.toFixed(2)}, {lab.a.toFixed(2)}, {lab.b.toFixed(2)}</div>
+						<div>
+							CMYK: {cmyk[0]}, {cmyk[1]}, {cmyk[2]}, {cmyk[3]}
+						</div>
+						<div>
+							LAB: {lab.l.toFixed(2)}, {lab.a.toFixed(2)}, {lab.b.toFixed(2)}
+						</div>
 					</div>
 					{color.createdAt && (
 						<div className='flex items-center gap-1.5 mt-2'>
@@ -787,9 +842,82 @@ export default function ColorCard({
 						}`}
 					>
 						<div className='flex items-center gap-2 mb-2'>
-							<span className={`text-xs sm:text-sm font-medium ${isDark ? 'text-lime-300' : 'text-lime-700'}`}>Расположение:</span>
-							<span className={`text-xs sm:text-sm font-mono ${isDark ? 'text-lime-200' : 'text-lime-900'}`}>{color.shelfLocation}</span>
+							<span
+								className={`text-xs sm:text-sm font-medium ${
+									isDark ? 'text-lime-300' : 'text-lime-700'
+								}`}
+							>
+								Расположение:
+							</span>
+							<span
+								className={`text-xs sm:text-sm font-mono ${
+									isDark ? 'text-lime-200' : 'text-lime-900'
+								}`}
+							>
+								{color.shelfLocation}
+							</span>
 						</div>
+					</div>
+				)}
+
+				{localTasks && localTasks.length > 0 && (
+					<div
+						className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
+							isDark
+								? 'bg-yellow-900/20 border border-yellow-800/30'
+								: 'bg-yellow-50 border border-yellow-200'
+						}`}
+					>
+						<div className='flex items-center gap-2 mb-2'>
+							<StickyNote
+								className={`w-4 h-4 ${
+									isDark ? 'text-yellow-400' : 'text-yellow-600'
+								}`}
+							/>
+							<p
+								className={`text-xs sm:text-sm font-medium ${
+									isDark ? 'text-yellow-300' : 'text-yellow-700'
+								}`}
+							>
+								Задачи/замечания:
+							</p>
+						</div>
+						<ul className='space-y-2'>
+							{localTasks.map(task => (
+								<li key={task.id} className='flex items-center gap-2'>
+									<button
+										className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors duration-200 ${
+											task.status === 'done'
+												? isDark
+													? 'border-green-500 bg-green-700/30'
+													: 'border-green-500 bg-green-100'
+												: isDark
+												? 'border-yellow-700'
+												: 'border-yellow-300'
+										}`}
+										disabled={task.status === 'done'}
+										onClick={e => {
+											e.stopPropagation()
+											if (task.status !== 'done') handleTaskDone(task.id)
+										}}
+										title={
+											task.status === 'done'
+												? 'Выполнено'
+												: 'Отметить как выполнено'
+										}
+									>
+										{task.status === 'done' ? '✓' : ''}
+									</button>
+									<span
+										className={`text-sm ${
+											task.status === 'done' ? 'line-through opacity-60' : ''
+										}`}
+									>
+										{task.text}
+									</span>
+								</li>
+							))}
+						</ul>
 					</div>
 				)}
 
@@ -908,9 +1036,7 @@ export default function ColorCard({
 								}`}
 						>
 							{expandedAdditionalColors && (
-								<div className='mt-3 space-y-3'>
-									{additionalColorsList}
-								</div>
+								<div className='mt-3 space-y-3'>{additionalColorsList}</div>
 							)}
 						</div>
 					</div>
@@ -1017,15 +1143,18 @@ export default function ColorCard({
 					</div>
 				</div>
 
-				<div className="px-4 pt-4 pb-2">
+				<div className='px-4 pt-4 pb-2'>
 					{/* Pantone info */}
 					{pantoneMatch ? (
-						<div className="mb-2 text-sm text-blue-700 font-semibold">
-							Pantone: {pantoneMatch.pantone} <span className="text-gray-500">({pantoneMatch.hex})</span>
+						<div className='mb-2 text-sm text-blue-700 font-semibold'>
+							Pantone: {pantoneMatch.pantone}{' '}
+							<span className='text-gray-500'>({pantoneMatch.hex})</span>
 						</div>
 					) : closestPantone ? (
-						<div className="mb-2 text-sm text-yellow-700 font-semibold">
-							Ближайший Pantone: {closestPantone.pantone} <span className="text-gray-500">({closestPantone.hex})</span> ΔE={closestPantone.deltaE.toFixed(2)}
+						<div className='mb-2 text-sm text-yellow-700 font-semibold'>
+							Ближайший Pantone: {closestPantone.pantone}{' '}
+							<span className='text-gray-500'>({closestPantone.hex})</span> ΔE=
+							{closestPantone.deltaE.toFixed(2)}
 						</div>
 					) : null}
 				</div>

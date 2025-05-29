@@ -245,3 +245,10 @@ export const unlinkColors = async (colorId1: string, colorId2: string) => {
 
 	await batch.commit()
 }
+
+export async function updateColorTasks(
+	id: string,
+	tasks: Array<{ id: string; text: string; status: 'open' | 'done' }>
+): Promise<void> {
+	return updateColor(id, { tasks })
+}
