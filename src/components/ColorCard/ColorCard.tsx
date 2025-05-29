@@ -19,7 +19,7 @@ import type { PantoneColor } from '@/types'
 // import { doc, updateDoc, increment } from 'firebase/firestore'
 import toast from 'react-hot-toast'
 import { incrementUsageCount } from '@lib/colors'
-import { findPantoneByHex, findClosestPantoneByLab, hexToLab } from '@/utils/colorUtils'
+import { findPantoneByHex, findClosestPantoneByLab, hexToLab, hexToRgb, rgbToCmyk } from '@/utils/colorUtils'
 
 interface ColorCardProps {
 	color: PantoneColor & { labValues?: { l: number; a: number; b: number } }
@@ -201,6 +201,22 @@ export default function ColorCard({
                 break-inside: avoid;
               }
             }
+            .tech-steps {
+              margin-top: 18px;
+              padding: 12px 0 0 0;
+              border-top: 1px solid #e2e8f0;
+            }
+            .tech-steps h3 {
+              font-size: 16px;
+              margin-bottom: 8px;
+              color: #333;
+            }
+            .tech-steps ol {
+              padding-left: 20px;
+            }
+            .tech-steps li {
+              margin-bottom: 4px;
+            }
           </style>
         </head>
         <body>
@@ -224,10 +240,10 @@ export default function ColorCard({
 					}
           ${recipes
 						.map(
-							(recipe, index) => `
+							recipe => `
             <div class="recipe-card">
               <div class="recipe-header">
-                <h2>Рецепт ${index + 1}</h2>
+                <h2>Рецепт</h2>
               </div>
               <div class="recipe-body">
                 <div class="info-row">
@@ -274,6 +290,14 @@ export default function ColorCard({
 											.join('')}
                   </tbody>
                 </table>
+                <div class="tech-steps">
+                  <h3>Технологическая карта:</h3>
+                  <ol>
+                    ${generateTechSteps(recipe)
+											.map(step => `<li>${step}</li>`)
+											.join('')}
+                  </ol>
+                </div>
               </div>
             </div>
           `
@@ -384,6 +408,94 @@ export default function ColorCard({
 	const pantoneMatch = findPantoneByHex(color.hex)
 	const lab = color.labValues || hexToLab(color.hex)
 	const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+	const rgb = hexToRgb(color.hex)
+	const cmyk = rgbToCmyk(...rgb)
+
+	// Prepare additionalColors JSX outside of return
+	const additionalColorsList = color.additionalColors?.map((additionalColor, index) => {
+		// Pantone info for additional color
+		const pantoneMatch = findPantoneByHex(additionalColor.hex)
+		const lab = additionalColor.labValues || hexToLab(additionalColor.hex)
+		const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+
+		return (
+			<div
+				key={index}
+				className={`p-3 rounded-lg ${
+					isDark ? 'bg-violet-900/30' : 'bg-violet-50'
+				}`}
+			>
+				<div className='flex items-center gap-3'>
+					<div
+						className='w-10 h-10 rounded border'
+						style={{ backgroundColor: additionalColor.hex }}
+					/>
+					<div className='space-y-1'>
+						<p
+							className={`text-sm font-medium ${
+							isDark ? 'text-violet-200' : 'text-violet-900'
+						}`}
+						>
+							{additionalColor.name}
+						</p>
+						<div
+							className={`text-xs ${
+							isDark ? 'text-violet-300' : 'text-violet-700'
+						}`}
+						>
+							<p>Анилокс: {additionalColor.anilox}</p>
+							<p className='font-mono'>{additionalColor.hex}</p>
+							{additionalColor.labValues && (
+								<div className='space-x-2'>
+									<span>
+										L: {additionalColor.labValues.l.toFixed(1)}
+									</span>
+									<span>
+										a: {additionalColor.labValues.a.toFixed(1)}
+									</span>
+									<span>
+										b: {additionalColor.labValues.b.toFixed(1)}
+									</span>
+								</div>
+							)}
+							{/* Pantone info for additional color */}
+							{pantoneMatch ? (
+								<div className="mt-1 text-xs text-blue-700 font-semibold">
+									Pantone: {pantoneMatch.pantone}{' '}
+									<span className="text-gray-500">({pantoneMatch.hex})</span>
+								</div>
+							) : closestPantone ? (
+								<div className="mt-1 text-xs text-yellow-700 font-semibold">
+									Ближайший Pantone: {closestPantone.pantone}{' '}
+									<span className="text-gray-500">({closestPantone.hex})</span>{' '}
+									ΔE={closestPantone.deltaE.toFixed(2)}
+								</div>
+							) : null}
+						</div>
+					</div>
+				</div>
+			</div>
+		)
+	})
+
+	// Функция генерации технологических шагов
+	function generateTechSteps(recipe: ReturnType<typeof parseRecipes>[0]) {
+		const steps = [];
+		if (recipe.material) {
+			steps.push(`Подготовьте материал: ${recipe.material}.`);
+		}
+		recipe.items.forEach((item) => {
+			steps.push(`Взвесьте и добавьте краску "${item.paint}" — ${item.amount} г.`);
+		});
+		steps.push(`Перемешайте до однородности.`);
+		if (recipe.anilox) {
+			steps.push(`Используйте анилокс: ${recipe.anilox}.`);
+		}
+		if (recipe.comment) {
+			steps.push(`Примечание: ${recipe.comment}`);
+		}
+		return steps;
+	}
 
 	return (
 		<div
@@ -444,20 +556,12 @@ export default function ColorCard({
 							{color.alternativeName}
 						</p>
 					)}
-					{/* <p
-						className={`text-xs sm:text-sm font-mono ${
-							isDark ? 'text-gray-400' : 'text-gray-600'
-						}`}
-					>
-						{color.hex}
-					</p> */}
-					<p
-						className={`text-xs sm:text-sm font-mono ${
-							isDark ? 'text-gray-400' : 'text-gray-600'
-						}`}
-					>
-						{color.labValues && ` lab(${color.labValues.l} ${color.labValues.a} ${color.labValues.b})`}
-					</p>
+					{/* Модели цвета */}
+					<div className='text-xs mt-2 space-y-1'>
+						<div>HEX: {color.hex}</div>
+						<div>CMYK: {cmyk[0]}, {cmyk[1]}, {cmyk[2]}, {cmyk[3]}</div>
+						<div>LAB: {lab.l.toFixed(2)}, {lab.a.toFixed(2)}, {lab.b.toFixed(2)}</div>
+					</div>
 					{color.createdAt && (
 						<div className='flex items-center gap-1.5 mt-2'>
 							<Calendar
@@ -790,51 +894,7 @@ export default function ColorCard({
 						>
 							{expandedAdditionalColors && (
 								<div className='mt-3 space-y-3'>
-									{color.additionalColors.map((additionalColor, index) => (
-										<div
-											key={index}
-											className={`p-3 rounded-lg ${
-												isDark ? 'bg-violet-900/30' : 'bg-violet-50'
-											}`}
-										>
-											<div className='flex items-center gap-3'>
-												<div
-													className='w-10 h-10 rounded border'
-													style={{ backgroundColor: additionalColor.hex }}
-												/>
-												<div className='space-y-1'>
-													<p
-														className={`text-sm font-medium ${
-															isDark ? 'text-violet-200' : 'text-violet-900'
-														}`}
-													>
-														{additionalColor.name}
-													</p>
-													<div
-														className={`text-xs ${
-															isDark ? 'text-violet-300' : 'text-violet-700'
-														}`}
-													>
-														<p>Анилокс: {additionalColor.anilox}</p>
-														<p className='font-mono'>{additionalColor.hex}</p>
-														{additionalColor.labValues && (
-															<div className='space-x-2'>
-																<span>
-																	L: {additionalColor.labValues.l.toFixed(1)}
-																</span>
-																<span>
-																	a: {additionalColor.labValues.a.toFixed(1)}
-																</span>
-																<span>
-																	b: {additionalColor.labValues.b.toFixed(1)}
-																</span>
-															</div>
-														)}
-													</div>
-												</div>
-											</div>
-										</div>
-									))}
+									{additionalColorsList}
 								</div>
 							)}
 						</div>
