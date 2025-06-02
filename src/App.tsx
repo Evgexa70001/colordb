@@ -8,6 +8,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import PrivateRoute from './components/PrivateRoute';
 import ShelvesView from './pages/ShelvesView';
+import Converter from './pages/Converter';
 
 function App() {
   return (
@@ -38,6 +39,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <ShelvesView />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/converter"
+              element={
+                <PrivateRoute>
+                  <Converter />
                 </PrivateRoute>
               }
             />

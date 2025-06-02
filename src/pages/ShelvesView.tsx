@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { PantoneColor } from '@/types'
-import { getColors, updateColor } from '@lib/colors'
+import { getColors, updateColor, clearAllShelfLocations } from '@lib/colors'
 import { Link } from 'react-router-dom'
 import { Dialog } from '@headlessui/react'
 import { X } from 'lucide-react'
 import { deleteField } from 'firebase/firestore'
+import toast from 'react-hot-toast'
 
 // TODO: Получить реальные цвета из props или контекста
 // const exampleColors: PantoneColor[] = [];
@@ -475,6 +476,19 @@ export default function ShelvesView() {
 		setSearch('')
 	}
 
+	// Очистка всех ячеек
+	async function handleClearAllCells() {
+		if (!window.confirm('Вы уверены, что хотите очистить все ячейки?')) return;
+		try {
+			await clearAllShelfLocations();
+			const updatedColors = await getColors();
+			setColors(updatedColors);
+			toast.success('Все ячейки успешно очищены');
+		} catch (error) {
+			toast.error('Ошибка при очистке ячеек');
+		}
+	}
+
 	// Перед рендером модалки:
 	const cellLocation = selectedCell ? getCellLocation(selectedCell) : ''
 	const canClearCell =
@@ -484,13 +498,19 @@ export default function ShelvesView() {
 
 	return (
 		<div className='p-6'>
-			<div className='mb-4'>
+			<div className='mb-4 flex flex-col sm:flex-row gap-2 sm:items-center'>
 				<Link
 					to='/'
 					className='inline-block px-4 py-2 rounded bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium transition-colors'
 				>
 					← К списку цветов
 				</Link>
+				<button
+					onClick={handleClearAllCells}
+					className='inline-block px-4 py-2 rounded bg-red-100 hover:bg-red-200 text-red-700 font-medium transition-colors ml-0 sm:ml-4'
+				>
+					Очистить все ячейки
+				</button>
 			</div>
 			<h1 className='text-2xl font-bold mb-6'>Схема стеллажей</h1>
 			<div className='flex gap-8 flex-wrap'>

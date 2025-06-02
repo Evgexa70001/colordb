@@ -14,6 +14,7 @@ import {
 	increment,
 	arrayUnion,
 	arrayRemove,
+	deleteField,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { PantoneColor } from '../types'
@@ -244,4 +245,26 @@ export async function updateColorTasks(
 	tasks: Array<{ id: string; text: string; status: 'open' | 'done' }>
 ): Promise<void> {
 	return updateColor(id, { tasks })
+}
+
+export const clearAllShelfLocations = async () => {
+	try {
+		const colorsRef = collection(db, 'colors')
+		const snapshot = await getDocs(colorsRef)
+		const batch = writeBatch(db)
+		snapshot.docs.forEach(doc => {
+			batch.update(doc.ref, { shelfLocation: deleteField() })
+		})
+		await batch.commit()
+	} catch (error) {
+		const firestoreError = error as FirestoreError
+		if (
+			firestoreError.code === 'failed-precondition' ||
+			firestoreError.code === 'unavailable'
+		) {
+			toast.error('Операция будет выполнена после восстановления соединения')
+			throw new Error('offline')
+		}
+		throw error
+	}
 }

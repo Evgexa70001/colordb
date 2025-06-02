@@ -80,12 +80,23 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
                     to="/shelves"
                     className={`text-lg font-medium ${
                       location.pathname === '/shelves'
-                        ? 'text-blue-500'
+                        ? 'text-lime-300 text-blue-500'
                         : isDark
                         ? 'text-lime-300 hover:text-white'
                         : 'text-lime-700 hover:text-lime-900'
                     }`}>
                     Стеллажи
+                  </Link>
+                  <Link
+                    to="/converter"
+                    className={`text-lg font-medium ${
+                      location.pathname === '/converter'
+                        ? 'text-fuchsia-500'
+                        : isDark
+                        ? 'text-fuchsia-300 hover:text-white'
+                        : 'text-fuchsia-700 hover:text-fuchsia-900'
+                    }`}>
+                    Конвертер
                   </Link>
                 </nav>
               </div>
@@ -159,6 +170,17 @@ export default function Header({ onSidebarOpen }: HeaderProps) {
                 : 'text-lime-700 hover:text-lime-900'
             }`}>
             <span className="text-sm font-medium">Стеллажи</span>
+          </Link>
+          <Link
+            to="/converter"
+            className={`flex flex-col items-center px-4 py-2 rounded-xl ${
+              location.pathname === '/converter'
+                ? 'text-fuchsia-500'
+                : isDark
+                ? 'text-fuchsia-300 hover:text-white'
+                : 'text-fuchsia-700 hover:text-fuchsia-900'
+            }`}>
+            <span className="text-sm font-medium">Конвертер</span>
           </Link>
         </div>
       </div>
