@@ -106,17 +106,10 @@ export async function updateColor(
 ): Promise<void> {
 	try {
 		const colorRef = doc(db, 'colors', id)
-		const finalUpdates = {
+		await updateDoc(colorRef, {
 			...updates,
-			alternativeName: updates.alternativeName ?? '',
-			notes: updates.notes ?? '',
-			manager: updates.manager ?? '',
 			updatedAt: serverTimestamp(),
-			labValues: updates.labValues ?? null,
-			labSource: updates.labSource ?? null,
-			additionalColors: updates.additionalColors ?? [],
-		}
-		await updateDoc(colorRef, finalUpdates)
+		})
 	} catch (error) {
 		const firestoreError = error as FirestoreError
 		if (
