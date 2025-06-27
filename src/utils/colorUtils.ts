@@ -86,14 +86,15 @@ export function rgbToLab(
 	g1 = g1 > 0.04045 ? Math.pow((g1 + 0.055) / 1.055, 2.4) : g1 / 12.92
 	b1 = b1 > 0.04045 ? Math.pow((b1 + 0.055) / 1.055, 2.4) : b1 / 12.92
 
-	// D65 reference white point
-	const xRef = 0.95047
+	// D50 reference white point
+	const xRef = 0.96422
 	const yRef = 1.0
-	const zRef = 1.08883
+	const zRef = 0.82521
 
-	const x = (r1 * 0.4124564 + g1 * 0.3575761 + b1 * 0.1804375) / xRef
-	const y = (r1 * 0.2126729 + g1 * 0.7151522 + b1 * 0.072175) / yRef
-	const z = (r1 * 0.0193339 + g1 * 0.119192 + b1 * 0.9503041) / zRef
+	// sRGB to XYZ transformation matrix for D50 illuminant
+	const x = (r1 * 0.4360747 + g1 * 0.3850649 + b1 * 0.1430804) / xRef
+	const y = (r1 * 0.2225045 + g1 * 0.7168786 + b1 * 0.0606169) / yRef
+	const z = (r1 * 0.0139322 + g1 * 0.0971045 + b1 * 0.7141733) / zRef
 
 	const fx = x > 0.008856 ? Math.pow(x, 1 / 3) : (903.3 * x + 16) / 116
 	const fy = y > 0.008856 ? Math.pow(y, 1 / 3) : (903.3 * y + 16) / 116
@@ -120,10 +121,10 @@ export function labToRgb(
 	const x = a / 500 + y
 	const z = y - b / 200
 
-	// D65 reference white point
-	const xRef = 0.95047
+	// D50 reference white point
+	const xRef = 0.96422
 	const yRef = 1.0
-	const zRef = 1.08883
+	const zRef = 0.82521
 
 	const x3 = Math.pow(x, 3)
 	const y3 = Math.pow(y, 3)
@@ -137,10 +138,10 @@ export function labToRgb(
 	const y1 = yr * yRef
 	const z1 = zr * zRef
 
-	// XYZ to RGB
-	let r = x1 * 3.2404542 - y1 * 1.5371385 - z1 * 0.4985314
-	let g = -x1 * 0.969266 + y1 * 1.8760108 + z1 * 0.041556
-	let b1 = x1 * 0.0556434 - y1 * 0.2040259 + z1 * 1.0572252
+	// XYZ to sRGB transformation matrix for D50 illuminant
+	let r = x1 * 3.1338561 - y1 * 1.6168667 - z1 * 0.4906146
+	let g = -x1 * 0.9787684 + y1 * 1.9161415 + z1 * 0.0334540
+	let b1 = x1 * 0.0719453 - y1 * 0.2289914 + z1 * 1.4052427
 
 	// Gamma correction
 	r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r

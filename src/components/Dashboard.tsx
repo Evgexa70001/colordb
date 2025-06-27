@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@components/ui/Button/Button'
 import {
 	Plus,
@@ -12,6 +12,8 @@ import {
 	Link2,
 	Search,
 	Printer,
+	BarChart3,
+	X,
 	// Beaker,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
@@ -47,6 +49,8 @@ import Header from './Header'
 import { DropdownSelect } from '@components/ui/DropdownSelect/DropdownSelect'
 import RecipeSearchModal from './RecipeSearch/RecipeSearchModal'
 import LABSearchModal from './LABSearch/LABSearchModal'
+import AnalyticsDashboard, { AnalyticsDashboardRef } from './Analytics/AnalyticsDashboard'
+import { trackColorCreated } from '@lib/analytics'
 
 type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
@@ -420,6 +424,8 @@ export default function Dashboard() {
 		items: Array<{ paint: string; amount: number }>
 	} | null>(null)
 	const [isLABSearchModalOpen, setIsLABSearchModalOpen] = useState(false)
+	const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false)
+	const analyticsDashboardRef = useRef<AnalyticsDashboardRef | null>(null)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -574,14 +580,35 @@ export default function Dashboard() {
 
 	const handleSaveNewColor = async (newColor: Omit<PantoneColor, 'id'>) => {
 		try {
-			await saveColor(newColor)
+			const savedColor = await saveColor(newColor)
+			
+			// Трекинг создания цвета (не блокируем создание цвета при ошибке трекинга)
+			if (savedColor?.id) {
+				try {
+					if (typeof trackColorCreated === 'function') {
+						await trackColorCreated(savedColor.id, newColor.name, newColor.manager, undefined, newColor.recipe)
+						
+						// Обновляем данные аналитики с задержкой
+						if (analyticsDashboardRef.current) {
+							// Увеличиваем задержку до 2 секунд для надежной записи в Firebase
+							setTimeout(() => {
+								analyticsDashboardRef.current?.refreshData()
+							}, 2000)
+						}
+					}
+				} catch (analyticsError) {
+					console.error('Analytics tracking failed, but color was created successfully:', analyticsError)
+					// Не прерываем выполнение, только логируем ошибку
+				}
+			}
+			
 			await loadData()
 			setIsNewColorModalOpen(false)
 			toast.success('Цвет успешно добавлен')
 		} catch (error) {
 			if (error instanceof Error && error.message !== 'offline') {
 				console.error('Error saving color:', error)
-				toast.error('Ошибка при сохранении цвета')
+				toast.error('Ошибка при сохранении цвета: ' + error.message)
 			}
 		}
 	}
@@ -1072,6 +1099,17 @@ export default function Dashboard() {
 								<Button
 									className='w-full'
 									variant='secondary'
+									leftIcon={<BarChart3 className='w-4 h-4' />}
+									onClick={() => {
+										setIsAnalyticsModalOpen(true)
+										setSidebarOpen(false)
+									}}
+								>
+									Аналитика
+								</Button>
+								<Button
+									className='w-full'
+									variant='secondary'
 									leftIcon={<RotateCcw className='w-4 h-4' />}
 									onClick={handleResetAllCounts}
 								>
@@ -1093,17 +1131,6 @@ export default function Dashboard() {
 								>
 									{isLinkingMode ? 'Отменить связывание' : 'Связать цвета'}
 								</Button>
-								{/* <Button
-									className='w-full'
-									variant='secondary'
-									leftIcon={<Beaker className='w-4 h-4' />}
-									onClick={() => {
-										setIsLABSearchModalOpen(true)
-										setSidebarOpen(false)
-									}}
-								>
-									Поиск по LAB
-								</Button> */}
 								<Button
 									className='w-full'
 									variant='secondary'
@@ -1669,6 +1696,39 @@ export default function Dashboard() {
 				onClose={() => setIsLABSearchModalOpen(false)}
 				onSearch={handleLABSearch}
 			/>
+
+			{/* Analytics Modal */}
+			{isAnalyticsModalOpen && (
+				<div className="fixed inset-0 z-50 overflow-y-auto">
+					<div className="fixed inset-0 bg-black/50" onClick={() => setIsAnalyticsModalOpen(false)} />
+					<div className="relative min-h-screen flex items-center justify-center p-4">
+						<div className={`relative w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl ${
+							isDark ? 'bg-gray-900' : 'bg-white'
+						}`}>
+							<div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b bg-inherit rounded-t-lg">
+								<h2 className={`text-xl font-semibold ${
+									isDark ? 'text-white' : 'text-gray-900'
+								}`}>
+									Аналитика
+								</h2>
+								<button
+									onClick={() => setIsAnalyticsModalOpen(false)}
+									className={`p-2 rounded-lg transition-colors ${
+										isDark 
+											? 'hover:bg-gray-800 text-gray-400 hover:text-gray-200' 
+											: 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+									}`}
+								>
+									<X className="w-5 h-5" />
+								</button>
+							</div>
+							<div className="p-6">
+								<AnalyticsDashboard ref={analyticsDashboardRef} />
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

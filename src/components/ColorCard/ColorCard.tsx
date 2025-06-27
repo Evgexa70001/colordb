@@ -415,6 +415,17 @@ export default function ColorCard({
 		try {
 			await incrementUsageCount(color.id)
 			onUpdate()
+			
+			// Трекинг использования цвета (не блокируем основную функциональность при ошибке)
+			try {
+				const { trackColorUsage } = await import('@lib/analytics')
+				if (typeof trackColorUsage === 'function') {
+					await trackColorUsage(color.id, color.name, 1, undefined, color.recipe)
+				}
+			} catch (analyticsError) {
+				// Тихо игнорируем ошибки аналитики
+			}
+			
 			toast.success('Счетчик использований обновлен')
 		} catch (error) {
 			console.error('Error updating usage count:', error)
