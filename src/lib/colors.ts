@@ -5,6 +5,7 @@ import {
 	deleteDoc,
 	doc,
 	updateDoc,
+	getDoc,
 	serverTimestamp,
 	DocumentReference,
 	FirestoreError,
@@ -107,6 +108,41 @@ export async function updateColor(
 ): Promise<void> {
 	try {
 		const colorRef = doc(db, 'colors', id)
+
+		// Если обновляется рецепт, нужно сохранить историю
+		if (updates.recipe !== undefined) {
+			// Получаем текущие данные цвета
+			const currentDoc = await getDoc(colorRef)
+			if (currentDoc.exists()) {
+				const currentData = currentDoc.data() as PantoneColor
+				const currentRecipe = currentData.recipe
+
+				// Если у цвета есть текущий рецепт и он отличается от нового
+				if (currentRecipe && currentRecipe !== updates.recipe) {
+					// Добавляем текущий рецепт в историю
+					const historyEntry = {
+						recipe: currentRecipe,
+						updatedAt: new Date().toISOString(),
+						updatedBy: updates.manager || currentData.manager || 'Неизвестно',
+					}
+
+					// Получаем текущую историю или создаем пустой массив
+					const currentHistory = currentData.recipeHistory || []
+
+					// Добавляем новую запись в начало массива
+					const newHistory = [historyEntry, ...currentHistory]
+
+					// Ограничиваем до 3 записей (удаляем старые)
+					if (newHistory.length > 3) {
+						newHistory.splice(3)
+					}
+
+					// Добавляем историю к обновлениям
+					updates.recipeHistory = newHistory
+				}
+			}
+		}
+
 		await updateDoc(colorRef, {
 			...updates,
 			updatedAt: serverTimestamp(),

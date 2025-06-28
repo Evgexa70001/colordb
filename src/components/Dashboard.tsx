@@ -14,6 +14,7 @@ import {
 	Printer,
 	BarChart3,
 	X,
+	StickyNote,
 	// Beaker,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
@@ -49,7 +50,10 @@ import Header from './Header'
 import { DropdownSelect } from '@components/ui/DropdownSelect/DropdownSelect'
 import RecipeSearchModal from './RecipeSearch/RecipeSearchModal'
 import LABSearchModal from './LABSearch/LABSearchModal'
-import AnalyticsDashboard, { AnalyticsDashboardRef } from './Analytics/AnalyticsDashboard'
+import LABSearchResultsModal from './LABSearch/LABSearchResultsModal'
+import AnalyticsDashboard, {
+	AnalyticsDashboardRef,
+} from './Analytics/AnalyticsDashboard'
 import { trackColorCreated } from '@lib/analytics'
 
 type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
@@ -424,8 +428,11 @@ export default function Dashboard() {
 		items: Array<{ paint: string; amount: number }>
 	} | null>(null)
 	const [isLABSearchModalOpen, setIsLABSearchModalOpen] = useState(false)
+	const [isLABSearchResultsModalOpen, setIsLABSearchResultsModalOpen] =
+		useState(false)
 	const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false)
 	const analyticsDashboardRef = useRef<AnalyticsDashboardRef | null>(null)
+	const [showOnlyWithTasks, setShowOnlyWithTasks] = useState(false)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -492,6 +499,7 @@ export default function Dashboard() {
 		sortField,
 		sortOrder,
 		verificationFilter,
+		showOnlyWithTasks,
 	])
 
 	useEffect(() => {
@@ -581,13 +589,19 @@ export default function Dashboard() {
 	const handleSaveNewColor = async (newColor: Omit<PantoneColor, 'id'>) => {
 		try {
 			const savedColor = await saveColor(newColor)
-			
+
 			// Трекинг создания цвета (не блокируем создание цвета при ошибке трекинга)
 			if (savedColor?.id) {
 				try {
 					if (typeof trackColorCreated === 'function') {
-						await trackColorCreated(savedColor.id, newColor.name, newColor.manager, undefined, newColor.recipe)
-						
+						await trackColorCreated(
+							savedColor.id,
+							newColor.name,
+							newColor.manager,
+							undefined,
+							newColor.recipe
+						)
+
 						// Обновляем данные аналитики с задержкой
 						if (analyticsDashboardRef.current) {
 							// Увеличиваем задержку до 2 секунд для надежной записи в Firebase
@@ -597,11 +611,14 @@ export default function Dashboard() {
 						}
 					}
 				} catch (analyticsError) {
-					console.error('Analytics tracking failed, but color was created successfully:', analyticsError)
+					console.error(
+						'Analytics tracking failed, but color was created successfully:',
+						analyticsError
+					)
 					// Не прерываем выполнение, только логируем ошибку
 				}
 			}
-			
+
 			await loadData()
 			setIsNewColorModalOpen(false)
 			toast.success('Цвет успешно добавлен')
@@ -848,11 +865,16 @@ export default function Dashboard() {
 						(verificationFilter === 'verified' && color.isVerified) ||
 						(verificationFilter === 'unverified' && !color.isVerified)
 
+					const hasTasks = showOnlyWithTasks
+						? color.tasks && color.tasks.length > 0
+						: true
+
 					return (
 						matchesSearch &&
 						matchesCategory &&
 						matchesCustomer &&
-						matchesVerification
+						matchesVerification &&
+						hasTasks
 					)
 				})
 				.sort((a, b) => {
@@ -930,6 +952,12 @@ export default function Dashboard() {
 	const handleResetSearch = () => {
 		setIsSearchActive(false)
 		setSearchResults([])
+	}
+
+	const handleColorSelectFromLABSearch = (color: PantoneColor) => {
+		setSelectedColor(color)
+		setIsDetailsModalOpen(true)
+		setIsLABSearchResultsModalOpen(false)
 	}
 
 	const handlePrintColorsList = () => {
@@ -1142,6 +1170,17 @@ export default function Dashboard() {
 								>
 									Поиск по рецепту
 								</Button>
+								<Button
+									className='w-full'
+									variant='secondary'
+									leftIcon={<Search className='w-4 h-4' />}
+									onClick={() => {
+										setIsLABSearchResultsModalOpen(true)
+										setSidebarOpen(false)
+									}}
+								>
+									Поиск похожих цветов
+								</Button>
 								{isSearchActive && (
 									<Button
 										className='w-full'
@@ -1164,6 +1203,21 @@ export default function Dashboard() {
 								</Button>
 							</div>
 						)}
+
+						{/* Фильтр задач */}
+						<div className='px-6 mb-6'>
+							<Button
+								className='w-full'
+								variant={showOnlyWithTasks ? 'primary' : 'secondary'}
+								leftIcon={<StickyNote className='w-4 h-4' />}
+								onClick={() => {
+									setShowOnlyWithTasks(!showOnlyWithTasks)
+									setSidebarOpen(false)
+								}}
+							>
+								{showOnlyWithTasks ? 'Показать все цвета' : 'Только с задачами'}
+							</Button>
+						</div>
 
 						{/* Категории */}
 						<div className='px-6 mb-6'>
@@ -1697,32 +1751,46 @@ export default function Dashboard() {
 				onSearch={handleLABSearch}
 			/>
 
+			<LABSearchResultsModal
+				isOpen={isLABSearchResultsModalOpen}
+				onClose={() => setIsLABSearchResultsModalOpen(false)}
+				colors={colors}
+				onColorSelect={handleColorSelectFromLABSearch}
+			/>
+
 			{/* Analytics Modal */}
 			{isAnalyticsModalOpen && (
-				<div className="fixed inset-0 z-50 overflow-y-auto">
-					<div className="fixed inset-0 bg-black/50" onClick={() => setIsAnalyticsModalOpen(false)} />
-					<div className="relative min-h-screen flex items-center justify-center p-4">
-						<div className={`relative w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl ${
-							isDark ? 'bg-gray-900' : 'bg-white'
-						}`}>
-							<div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b bg-inherit rounded-t-lg">
-								<h2 className={`text-xl font-semibold ${
-									isDark ? 'text-white' : 'text-gray-900'
-								}`}>
+				<div className='fixed inset-0 z-50 overflow-y-auto'>
+					<div
+						className='fixed inset-0 bg-black/50'
+						onClick={() => setIsAnalyticsModalOpen(false)}
+					/>
+					<div className='relative min-h-screen flex items-center justify-center p-4'>
+						<div
+							className={`relative w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl ${
+								isDark ? 'bg-gray-900' : 'bg-white'
+							}`}
+						>
+							<div className='sticky top-0 z-10 flex items-center justify-between p-6 border-b bg-inherit rounded-t-lg'>
+								<h2
+									className={`text-xl font-semibold ${
+										isDark ? 'text-white' : 'text-gray-900'
+									}`}
+								>
 									Аналитика
 								</h2>
 								<button
 									onClick={() => setIsAnalyticsModalOpen(false)}
 									className={`p-2 rounded-lg transition-colors ${
-										isDark 
-											? 'hover:bg-gray-800 text-gray-400 hover:text-gray-200' 
+										isDark
+											? 'hover:bg-gray-800 text-gray-400 hover:text-gray-200'
 											: 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
 									}`}
 								>
-									<X className="w-5 h-5" />
+									<X className='w-5 h-5' />
 								</button>
 							</div>
-							<div className="p-6">
+							<div className='p-6'>
 								<AnalyticsDashboard ref={analyticsDashboardRef} />
 							</div>
 						</div>

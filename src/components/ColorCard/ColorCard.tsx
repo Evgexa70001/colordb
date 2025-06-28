@@ -13,6 +13,7 @@ import {
 	Plus,
 	Link2,
 	X,
+	Tag,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import type { PantoneColor } from '@/types'
@@ -348,6 +349,174 @@ export default function ColorCard({
 		}
 	}
 
+	// Функция для печати стикера
+	const handlePrintSticker = (e: React.MouseEvent) => {
+		e.stopPropagation()
+
+		const recipes = parseRecipes(color.recipe || '')
+		const firstRecipe = recipes[0]
+
+		// Извлекаем анилокс из первого дополнительного цвета или рецепта
+		const anilox =
+			color.additionalColors?.[0]?.anilox || firstRecipe?.anilox || '-'
+
+		// Формируем сокращенное местоположение (стеллаж + полка/секция без ряда и позиции)
+		const getShortLocation = (location?: string) => {
+			if (!location) return '-'
+			const normalized = location.replace(/\\/g, '/').trim()
+
+			// Для формата с частью: "2 Левая 1/4/1/1" → "2 Левая 1/4"
+			const partMatch = normalized.match(
+				/^(\d+)\s+(Левая|Правая)\s+(\d+)\/(\d+)(?:\/.*)?$/
+			)
+			if (partMatch) {
+				return `${partMatch[1]} ${partMatch[2]} ${partMatch[3]}/${partMatch[4]}`
+			}
+
+			// Для простого формата: "1 1/4/1/1" → "1 1/4"
+			const simpleMatch = normalized.match(/^(\d+)\s+(\d+)\/(\d+)(?:\/.*)?$/)
+			if (simpleMatch) {
+				return `${simpleMatch[1]} ${simpleMatch[2]}/${simpleMatch[3]}`
+			}
+
+			return location
+		}
+
+		const shortLocation = getShortLocation(color.shelfLocation)
+
+		// Формируем информацию о дополнительных цветах в формате "анилокс - цвет"
+		const additionalColorsText =
+			color.additionalColors && color.additionalColors.length > 0
+				? color.additionalColors
+						.map(
+							additionalColor =>
+								`${additionalColor.anilox} - ${additionalColor.name}`
+						)
+						.join(', ')
+				: anilox
+
+		// Формируем строку рецепта в компактном виде - каждая краска с новой строки
+		const recipeText = firstRecipe
+			? firstRecipe.items
+					.map(
+						item =>
+							`${item.paint.replace('Краска ', '').replace('краска ', '')} - ${
+								item.amount
+							}`
+					)
+					.join('<br>')
+			: 'Нет рецепта'
+
+		// Создаем содержимое стикера
+		const stickerContent = `
+      <html>
+        <head>
+          <title>Стикер ${color.name}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 10px;
+              background: white;
+            }
+            .sticker {
+              width: 85mm;
+              height: 55mm;
+              border: 2px solid #000;
+              border-radius: 3px;
+              display: block;
+              margin: 0 auto;
+              overflow: hidden;
+            }
+            .sticker-table {
+              width: 100%;
+              height: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+              line-height: 1.2;
+            }
+            .sticker-table td {
+              border: 1px solid #000;
+              padding: 2px 4px;
+              vertical-align: middle;
+              font-weight: bold;
+            }
+            .label-cell {
+              background-color: #e8e8e8;
+              width: 35%;
+              text-align: center;
+              font-size: 10px;
+            }
+            .value-cell {
+              text-align: center;
+              font-size: 12px;
+            }
+            .recipe-cell {
+              font-size: 10px;
+              line-height: 1.1;
+            }
+            @media print {
+              body { margin: 0; padding: 5mm; }
+              .sticker { 
+                width: 85mm; 
+                height: 55mm; 
+                page-break-after: always;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="sticker">
+            <table class="sticker-table">
+              <tr style="height: 15%;">
+                <td class="label-cell">Номер тарного места</td>
+                <td class="label-cell">Материал</td>
+              </tr>
+              <tr style="height: 15%;">
+                <td class="value-cell">${shortLocation}</td>
+                <td class="value-cell">${firstRecipe?.material || 'Бумага'}</td>
+              </tr>
+              <tr style="height: 15%;">
+                <td class="label-cell">Номер Pantone</td>
+                <td class="label-cell">Анилокс</td>
+              </tr>
+              <tr style="height: 15%;">
+                <td class="value-cell">${color.name}${
+			color.alternativeName ? ` (${color.alternativeName})` : ''
+		}</td>
+                <td class="value-cell">${additionalColorsText}</td>
+              </tr>
+              <tr style="height: 20%;">
+                <td class="label-cell">Образец</td>
+                <td class="label-cell">Рецепт</td>
+              </tr>
+              <tr style="height: 35%;">
+                <td style="padding: 5px;">
+                  <!-- Пустое место для приклеивания образца -->
+                </td>
+                <td class="recipe-cell">${recipeText}</td>
+              </tr>
+            </table>
+          </div>
+        </body>
+      </html>
+    `
+
+		// Создаем новое окно для печати стикера
+		const printWindow = window.open('', '_blank')
+		if (printWindow) {
+			printWindow.document.write(stickerContent)
+			printWindow.document.close()
+			printWindow.focus()
+
+			// Даем время на загрузку стилей
+			setTimeout(() => {
+				printWindow.print()
+				printWindow.close()
+			}, 250)
+		}
+	}
+
 	// Обновляем функцию hasMatchingRecipes
 	const hasMatchingRecipes = (recipe: string) => {
 		const recipes = parseRecipes(recipe)
@@ -409,23 +578,50 @@ export default function ColorCard({
 	}
 
 	const hasSimilarRecipes = color.recipe && hasMatchingRecipes(color.recipe)
+	const hasRecipeHistory = color.recipeHistory && color.recipeHistory.length > 0
+
+	// Функция для определения стиля обводки карточки
+	const getBorderStyle = () => {
+		// Если есть и похожие рецепты, и история - используем градиент
+		if (hasSimilarRecipes && hasRecipeHistory) {
+			return isDark
+				? 'border-transparent bg-gradient-to-br from-rose-500/50 via-purple-500/50 to-rose-500/50 bg-clip-border border-2'
+				: 'border-transparent bg-gradient-to-br from-rose-500/80 via-purple-500/80 to-rose-500/80 bg-clip-border border-2'
+		}
+		// Только история изменений - фиолетовая обводка
+		if (hasRecipeHistory) {
+			return isDark ? 'border-purple-500/60' : 'border-purple-500/80'
+		}
+		// Только похожие рецепты - красная обводка
+		if (hasSimilarRecipes) {
+			return isDark ? 'border-rose-500/50' : 'border-rose-500/80'
+		}
+		// Обычная обводка
+		return isDark ? 'border-gray-700' : 'border-gray-200'
+	}
 
 	const handleIncrementUsage = async (e: React.MouseEvent) => {
 		e.stopPropagation()
 		try {
 			await incrementUsageCount(color.id)
 			onUpdate()
-			
+
 			// Трекинг использования цвета (не блокируем основную функциональность при ошибке)
 			try {
 				const { trackColorUsage } = await import('@lib/analytics')
 				if (typeof trackColorUsage === 'function') {
-					await trackColorUsage(color.id, color.name, 1, undefined, color.recipe)
+					await trackColorUsage(
+						color.id,
+						color.name,
+						1,
+						undefined,
+						color.recipe
+					)
 				}
 			} catch (analyticsError) {
 				// Тихо игнорируем ошибки аналитики
 			}
-			
+
 			toast.success('Счетчик использований обновлен')
 		} catch (error) {
 			console.error('Error updating usage count:', error)
@@ -597,6 +793,26 @@ export default function ColorCard({
 	}
 	const parsedLocation = parseShelfLocation(color.shelfLocation)
 
+	const handleCopyId = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		navigator.clipboard.writeText(color.id)
+		toast.success('ID скопирован в буфер обмена!')
+	}
+
+	// Функция для получения подсказки об обводке
+	const getBorderTooltip = () => {
+		if (hasSimilarRecipes && hasRecipeHistory) {
+			return 'У цвета есть похожие рецепты и история изменений'
+		}
+		if (hasRecipeHistory) {
+			return 'У цвета есть история изменений рецепта'
+		}
+		if (hasSimilarRecipes) {
+			return 'У цвета есть похожие рецепты в базе'
+		}
+		return ''
+	}
+
 	return (
 		<div
 			className={`relative group cursor-pointer rounded-xl shadow-lg overflow-hidden 
@@ -611,16 +827,9 @@ export default function ColorCard({
 					? 'bg-gray-800/90 backdrop-blur-sm'
 					: 'bg-white/90 backdrop-blur-sm'
 			} 
-      border ${
-				hasSimilarRecipes
-					? isDark
-						? 'border-rose-500/50'
-						: 'border-rose-500/80'
-					: isDark
-					? 'border-gray-700'
-					: 'border-gray-200'
-			}`}
+      border ${getBorderStyle()}`}
 			onClick={handleCardClick}
+			title={getBorderTooltip()}
 		>
 			<div
 				className='h-32 sm:h-40 relative transition-all duration-500 ease-out
@@ -647,6 +856,20 @@ export default function ColorCard({
 					>
 						{color.name}
 					</h3>
+					{/* Временное отображение ID для отладки */}
+					{process.env.NODE_ENV === 'development' && (
+						<button
+							onClick={handleCopyId}
+							className={`text-xs font-mono opacity-70 hover:opacity-100 transition-opacity cursor-pointer ${
+								isDark
+									? 'text-yellow-400 hover:text-yellow-300'
+									: 'text-orange-600 hover:text-orange-500'
+							}`}
+							title='ID цвета (клик для копирования)'
+						>
+							ID: {color.id}
+						</button>
+					)}
 					{color.alternativeName && (
 						<p
 							className={`text-base font-medium mt-1 ${
@@ -1148,19 +1371,36 @@ export default function ColorCard({
 
 					<div className='flex items-center gap-1 sm:gap-2 relative z-20'>
 						{color.recipe && (
-							<button
-								onClick={e => {
-									e.stopPropagation()
-									handlePrint(e)
-								}}
-								className={`p-2 rounded-lg transition-all duration-200 ${
-									isDark
-										? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'
-										: 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-								}`}
-							>
-								<Printer className='w-4 h-4' />
-							</button>
+							<>
+								<button
+									onClick={e => {
+										e.stopPropagation()
+										handlePrint(e)
+									}}
+									className={`p-2 rounded-lg transition-all duration-200 ${
+										isDark
+											? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'
+											: 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+									}`}
+									title='Печать рецепта'
+								>
+									<Printer className='w-4 h-4' />
+								</button>
+								<button
+									onClick={e => {
+										e.stopPropagation()
+										handlePrintSticker(e)
+									}}
+									className={`p-2 rounded-lg transition-all duration-200 ${
+										isDark
+											? 'hover:bg-gray-700/50 text-gray-300 hover:text-gray-100'
+											: 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+									}`}
+									title='Печать стикера для ведра'
+								>
+									<Tag className='w-4 h-4' />
+								</button>
+							</>
 						)}
 
 						<button

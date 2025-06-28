@@ -58,6 +58,11 @@ export interface PantoneColor {
 	}
 	shelfLocation?: string
 	tasks?: Array<{ id: string; text: string; status: 'open' | 'done' }>
+	recipeHistory?: Array<{
+		recipe: string
+		updatedAt: string | { seconds: number; nanoseconds: number }
+		updatedBy?: string
+	}>
 }
 
 export interface ColorData {
@@ -156,24 +161,185 @@ export interface ColorInfo {
 	}
 }
 
-// Добавьте эти интерфейсы к существующим типам
-export interface EquipmentSection {
-	anilox: string
-	paint: string
-	additionalInfo: string
+export interface MetamerismAnalysis {
+	isMetameric: boolean
+	severity: 'low' | 'medium' | 'high'
+	problematicLightSources: string[]
+	deltaEUnderDifferentLights: Record<string, number>
+	recommendation: string
+	averageDeltaE: number
 }
 
-export interface EquipmentGroup {
-	name: string
-	material: string
-	date: string
-	sections: EquipmentSection[]
-}
-
-export interface Equipment {
+// Расширенные типы для работы с освещением
+export interface LightSource {
 	id: string
-	imageUrl?: string
-	groups: EquipmentGroup[]
-	createdAt: Date
-	customers?: string[]
+	name: string
+	type: 'daylight' | 'fluorescent' | 'led' | 'incandescent' | 'uv'
+	colorTemperature: number // в Кельвинах
+	cri?: number // Color Rendering Index
+	description?: string
+}
+
+// Расширенные типы для работы с освещением
+export interface ExtendedLightSource extends LightSource {
+	spectralPowerDistribution?: number[] // Спектральное распределение мощности
+	uvContent?: number // Содержание УФ излучения (0-1)
+	irContent?: number // Содержание ИК излучения (0-1)
+	flickerFrequency?: number // Частота мерцания (Гц)
+	usage: 'printing' | 'retail' | 'home' | 'office' | 'industrial' | 'outdoor'
+	timeOfDay?: 'morning' | 'noon' | 'evening' | 'night'
+	geography?: 'northern' | 'southern' | 'equatorial'
+	quality: 'professional' | 'commercial' | 'consumer'
+}
+
+export interface LightingConditions {
+	primaryLight: ExtendedLightSource
+	secondaryLights?: ExtendedLightSource[]
+	ambientLevel: number // 0-1, уровень окружающего света
+	directionalLight?: {
+		angle: number // Угол падения света
+		intensity: number // Интенсивность
+		shadowSoftness: number // Мягкость теней
+	}
+	surfaceProperties?: {
+		gloss: number // Глянцевость поверхности (0-1)
+		texture: 'smooth' | 'textured' | 'matte'
+		substrate: 'paper' | 'plastic' | 'metal' | 'fabric'
+	}
+}
+
+export interface MetamerismTest {
+	id: string
+	name: string
+	description: string
+	lightSources: ExtendedLightSource[]
+	acceptanceThreshold: number // Максимальный допустимый ΔE
+	criticalityLevel: 'low' | 'medium' | 'high' | 'critical'
+	industry: 'flexography' | 'offset' | 'digital' | 'packaging' | 'textile'
+}
+
+export interface ColorAppearance {
+	lightSourceId: string
+	perceivedColor: {
+		hex: string
+		lab: { l: number; a: number; b: number }
+		description: string // Словесное описание цвета
+	}
+	contrast: number // Контраст с фоном
+	visibility: number // Видимость (0-1)
+	colorShift: {
+		magnitude: number // Величина сдвига
+		direction: string // Направление сдвига (warmer/cooler/lighter/darker)
+	}
+	warnings: string[]
+}
+
+export interface MetamerismReport {
+	colorId: string
+	testDate: Date
+	conditions: LightingConditions
+	appearances: ColorAppearance[]
+	overallAssessment: {
+		severity: 'acceptable' | 'noticeable' | 'problematic' | 'critical'
+		recommendation: string
+		suitableApplications: string[]
+		restrictedApplications: string[]
+	}
+	comparisonPairs: Array<{
+		light1: string
+		light2: string
+		deltaE: number
+		visualDifference: 'imperceptible' | 'slight' | 'noticeable' | 'significant'
+		acceptanceStatus: 'pass' | 'marginal' | 'fail'
+	}>
+}
+
+export interface LightingEnvironment {
+	id: string
+	name: string
+	description: string
+	lighting: LightingConditions
+	typicalUse: string[]
+	criticalFactors: string[]
+}
+
+// Новые типы для журнала отклонений и корректировок
+export interface ColorDeviation {
+	id: string
+	colorId: string
+	colorName: string
+	deviationType:
+		| 'color_mismatch'
+		| 'recipe_adjustment'
+		| 'quality_issue'
+		| 'customer_feedback'
+		| 'production_error'
+	techCardNumber?: string // Заменили severity на номер тех.карты
+	detectedAt: Date
+	detectedBy: string // ID пользователя
+	description: string
+	originalValues: {
+		hex?: string
+		lab?: { l: number; a: number; b: number }
+		recipe?: string
+	}
+	targetValues: {
+		hex?: string
+		lab?: { l: number; a: number; b: number }
+		recipe?: string
+	}
+	// Поля для координат эталона и текущего образца
+	referenceCoordinates?: {
+		l: number
+		a: number
+		b: number
+	}
+	currentCoordinates?: {
+		l: number
+		a: number
+		b: number
+	}
+	deltaE?: {
+		deltaE2000: number
+	}
+	correctionApplied: boolean
+	correctionDetails?: string
+	status: 'open' | 'in_progress' | 'resolved' | 'rejected'
+	assignedTo?: string
+	resolvedAt?: Date
+	resolvedBy?: string
+	attachments?: string[] // URLs к изображениям/документам
+}
+
+export interface ColorCorrection {
+	id: string
+	deviationId: string
+	correctionType:
+		| 'recipe_adjustment'
+		| 'color_replacement'
+		| 'process_change'
+		| 'parameter_tuning'
+	appliedAt: Date
+	appliedBy: string
+	correctionData: {
+		beforeValues: {
+			hex?: string
+			lab?: { l: number; a: number; b: number }
+			recipe?: string
+		}
+		afterValues: {
+			hex?: string
+			lab?: { l: number; a: number; b: number }
+			recipe?: string
+		}
+		adjustments: string[]
+	}
+	effectivenessRating?: number // 1-5 звезд
+	verificationResults?: {
+		deltaEImprovement: number
+		visualAssessment: 'poor' | 'fair' | 'good' | 'excellent'
+		approvedBy: string
+		approvedAt: Date
+	}
+	notes?: string
 }

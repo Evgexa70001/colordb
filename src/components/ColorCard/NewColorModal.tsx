@@ -10,6 +10,8 @@ import {
 } from '@utils/colorUtils'
 import { UNCATEGORIZED } from '@lib/categories'
 import toast from 'react-hot-toast'
+import SpectrometerButton from '@/components/Spectrophotometer/SpectrometerButton'
+import { SpectrometerReading } from '@/hooks/useSpectrophotometer'
 
 import type { ColorData } from '@/types'
 
@@ -558,6 +560,23 @@ ${recipe.items
 		}
 	}, [isCustomerDropdownOpen])
 
+	// Обработчик измерений спектрофотометра
+	const handleSpectrometerMeasurement = (reading: SpectrometerReading) => {
+		// Переключаемся на режим LAB и заполняем значения
+		setColorInputMode('lab')
+		setLabValues({
+			l: reading.l.toFixed(2),
+			a: reading.a.toFixed(2),
+			b: reading.b.toFixed(2),
+		})
+
+		// Конвертируем в HEX для предварительного просмотра
+		const hexValue = labToHex({ l: reading.l, a: reading.a, b: reading.b })
+		setHex(hexValue)
+
+		toast.success('LAB координаты заполнены из измерения спектрофотометра')
+	}
+
 	return (
 		<Dialog open={isOpen} onClose={onClose} className='relative z-50'>
 			<div className='fixed inset-0 bg-black/30' aria-hidden='true' />
@@ -739,46 +758,56 @@ ${recipe.items
 										/>
 									</div>
 								) : (
-									<div className='flex-1 grid grid-cols-3 gap-4'>
-										<Input
-											id='lab-l'
-											value={labValues.l}
-											onChange={e => {
-												const value = e.target.value.replace(',', '.')
-												setLabValues(prev => ({ ...prev, l: value }))
-											}}
-											required
-											type='text'
-											inputMode='numeric'
-											pattern='-?[0-9]*\.?[0-9]*'
-											label='L'
-										/>
-										<Input
-											id='lab-a'
-											value={labValues.a}
-											onChange={e => {
-												const value = e.target.value.replace(',', '.')
-												setLabValues(prev => ({ ...prev, a: value }))
-											}}
-											required
-											type='text'
-											inputMode='numeric'
-											pattern='-?[0-9]*\.?[0-9]*'
-											label='a'
-										/>
-										<Input
-											id='lab-b'
-											value={labValues.b}
-											onChange={e => {
-												const value = e.target.value.replace(',', '.')
-												setLabValues(prev => ({ ...prev, b: value }))
-											}}
-											required
-											type='text'
-											inputMode='numeric'
-											pattern='-?[0-9]*\.?[0-9]*'
-											label='b'
-										/>
+									<div className='flex-1 space-y-4'>
+										<div className='grid grid-cols-3 gap-4'>
+											<Input
+												id='lab-l'
+												value={labValues.l}
+												onChange={e => {
+													const value = e.target.value.replace(',', '.')
+													setLabValues(prev => ({ ...prev, l: value }))
+												}}
+												required
+												type='text'
+												inputMode='numeric'
+												pattern='-?[0-9]*\.?[0-9]*'
+												label='L'
+											/>
+											<Input
+												id='lab-a'
+												value={labValues.a}
+												onChange={e => {
+													const value = e.target.value.replace(',', '.')
+													setLabValues(prev => ({ ...prev, a: value }))
+												}}
+												required
+												type='text'
+												inputMode='numeric'
+												pattern='-?[0-9]*\.?[0-9]*'
+												label='a'
+											/>
+											<Input
+												id='lab-b'
+												value={labValues.b}
+												onChange={e => {
+													const value = e.target.value.replace(',', '.')
+													setLabValues(prev => ({ ...prev, b: value }))
+												}}
+												required
+												type='text'
+												inputMode='numeric'
+												pattern='-?[0-9]*\.?[0-9]*'
+												label='b'
+											/>
+										</div>
+
+										{/* Интеграция спектрофотометра */}
+										<div className='border-t pt-4'>
+											<SpectrometerButton
+												onMeasurement={handleSpectrometerMeasurement}
+												disabled={false}
+											/>
+										</div>
 									</div>
 								)}
 								<div

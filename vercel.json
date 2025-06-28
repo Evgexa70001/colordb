@@ -1,20 +1,16 @@
 {
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/"
-    },
-    {
-      "src": "/equipment",
-      "dest": "/"
-    },
-    {
-      "src": "/login",
-      "dest": "/"
-    },
-    {
-      "src": "/signup",
-      "dest": "/"
-    }
-  ]
+	"routes": [
+		{
+			"src": "/",
+			"dest": "/"
+		},
+		{
+			"src": "/login",
+			"dest": "/"
+		},
+		{
+			"src": "/signup",
+			"dest": "/"
+		}
+	]
 }

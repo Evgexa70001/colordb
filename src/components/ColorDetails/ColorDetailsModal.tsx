@@ -6,6 +6,8 @@ import {
 	StickyNote,
 	Link2,
 	ImagePlus,
+	History,
+	Eye,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import {
@@ -17,6 +19,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@components/ui/Tabs'
 import { uploadToImgur } from '@lib/imgur'
 import { toast } from 'react-hot-toast'
+import MetamerismAnalyzer from '../MetamerismAnalysis/MetamerismAnalyzer'
 
 import ColorInfo from './ColorInfo'
 import type { PantoneColor, Recipe } from '@/types'
@@ -223,6 +226,130 @@ export default function ColorDetailsModal({
 		}
 	}
 
+	const formatDate = (
+		dateValue: string | { seconds: number; nanoseconds: number }
+	) => {
+		let date: Date
+
+		if (typeof dateValue === 'string') {
+			date = new Date(dateValue)
+		} else {
+			date = new Date(dateValue.seconds * 1000)
+		}
+
+		return date.toLocaleDateString('ru-RU', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+		})
+	}
+
+	const formatHistoryRecipe = (recipe: string) => {
+		const lines = recipe.split('\n')
+		const recipes: {
+			totalAmount: number
+			material: string
+			comment?: string
+			name?: string
+			items: { paint: string; amount: number }[]
+		}[] = []
+		let currentRecipe: {
+			totalAmount: number
+			material: string
+			comment?: string
+			name?: string
+			items: { paint: string; amount: number }[]
+		} | null = null
+
+		lines.forEach(line => {
+			const totalAmountMatch = line.match(/Общее количество: (\d+)/)
+			const materialMatch = line.match(/Материал: (.+)/)
+			const commentMatch = line.match(
+				/Комментарий:\n([\s\S]+?)(?=\nОбщее количество:|$)/
+			)
+			const paintMatch = line.match(/Краска: (.+), Количество: (\d+)/)
+			const nameMatch = line.match(/Название: (.+)/)
+
+			if (totalAmountMatch) {
+				if (currentRecipe) {
+					recipes.push(currentRecipe)
+				}
+				currentRecipe = {
+					totalAmount: parseInt(totalAmountMatch[1]),
+					material: '',
+					comment: '',
+					name: '',
+					items: [],
+				}
+			} else if (materialMatch && currentRecipe) {
+				currentRecipe.material = materialMatch[1]
+			} else if (commentMatch && currentRecipe) {
+				currentRecipe.comment = commentMatch[1].trim()
+			} else if (nameMatch && currentRecipe) {
+				currentRecipe.name = nameMatch[1].trim()
+			} else if (paintMatch && currentRecipe) {
+				currentRecipe.items.push({
+					paint: paintMatch[1],
+					amount: parseInt(paintMatch[2]),
+				})
+			}
+		})
+
+		if (currentRecipe) {
+			recipes.push(currentRecipe)
+		}
+
+		const validRecipes = recipes.filter(
+			recipe =>
+				recipe.material.trim() !== '' &&
+				recipe.items.length > 0 &&
+				recipe.items.some(item => item.paint.trim() !== '' && item.amount > 0)
+		)
+
+		return validRecipes.map((recipe, index) => (
+			<div
+				key={index}
+				className={`${
+					index > 0 ? 'mt-2 pt-2 border-t border-purple-400/30' : ''
+				}`}
+			>
+				<div
+					className={`text-xs uppercase tracking-wider mb-1 ${
+						isDark ? 'text-purple-300/70' : 'text-purple-600/70'
+					}`}
+				>
+					{recipe.name || `Рецепт ${index + 1}`}
+				</div>
+				<span className='block font-medium text-sm'>
+					Материал: {recipe.material}
+				</span>
+				{recipe.comment && (
+					<div className='block italic text-xs'>
+						<span className='font-medium'>Комментарий:</span>
+						<pre className='mt-1 whitespace-pre-wrap font-sans text-xs'>
+							{recipe.comment}
+						</pre>
+					</div>
+				)}
+				{recipe.items
+					.filter(item => item.paint.trim() !== '' && item.amount > 0)
+					.map((item, itemIndex) => {
+						const percentage = (
+							(item.amount / recipe.totalAmount) *
+							100
+						).toFixed(1)
+						return (
+							<span key={itemIndex} className='block text-xs'>
+								{item.paint} - {percentage}% ({item.amount} гр.)
+							</span>
+						)
+					})}
+			</div>
+		))
+	}
+
 	return (
 		<Dialog open={isOpen} onClose={onClose} className='relative z-50'>
 			<div
@@ -336,6 +463,73 @@ export default function ColorDetailsModal({
 									</p>
 								</div>
 								{formatRecipe(color.recipe)}
+							</div>
+						)}
+
+						{/* Recipe History */}
+						{color.recipeHistory && color.recipeHistory.length > 0 && (
+							<div
+								className={`p-6 rounded-xl transition-colors ${
+									isDark
+										? 'bg-purple-900/20 hover:bg-purple-900/30'
+										: 'bg-purple-50 hover:bg-purple-100/70'
+								}`}
+							>
+								<div className='flex items-center gap-3 mb-4'>
+									<History
+										className={`w-5 h-5 ${
+											isDark ? 'text-purple-400' : 'text-purple-600'
+										}`}
+									/>
+									<p
+										className={`text-lg font-semibold ${
+											isDark ? 'text-purple-300' : 'text-purple-700'
+										}`}
+									>
+										История изменений рецепта:
+									</p>
+								</div>
+								<div className='space-y-4'>
+									{color.recipeHistory.map((historyEntry, index) => (
+										<div
+											key={index}
+											className={`p-4 rounded-lg border-l-4 ${
+												isDark
+													? 'bg-purple-900/10 border-purple-500/50'
+													: 'bg-purple-50/50 border-purple-400'
+											}`}
+										>
+											<div className='flex items-center justify-between mb-2'>
+												<span
+													className={`text-sm font-medium ${
+														isDark ? 'text-purple-300' : 'text-purple-700'
+													}`}
+												>
+													Изменение #{index + 1}
+												</span>
+												<div
+													className={`text-xs ${
+														isDark ? 'text-purple-400' : 'text-purple-600'
+													}`}
+												>
+													{formatDate(historyEntry.updatedAt)}
+													{historyEntry.updatedBy && (
+														<span className='ml-2'>
+															• {historyEntry.updatedBy}
+														</span>
+													)}
+												</div>
+											</div>
+											<div
+												className={`${
+													isDark ? 'text-purple-200' : 'text-purple-800'
+												}`}
+											>
+												{formatHistoryRecipe(historyEntry.recipe)}
+											</div>
+										</div>
+									))}
+								</div>
 							</div>
 						)}
 
@@ -552,6 +746,15 @@ export default function ColorDetailsModal({
 									Похожие рецепты
 								</TabsTrigger>
 								<TabsTrigger
+									value='metamerism'
+									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
+								>
+									<div className='flex items-center gap-2'>
+										<Eye className='w-4 h-4' />
+										<span>Метамеризм</span>
+									</div>
+								</TabsTrigger>
+								<TabsTrigger
 									value='linked'
 									className='w-full sm:w-auto justify-center px-4 py-2 mb-2 sm:mb-0'
 								>
@@ -563,6 +766,7 @@ export default function ColorDetailsModal({
 							</TabsList>
 
 							<TabsContent value='similar' className='overflow-x-hidden mt-6'>
+								{/* Результаты поиска или обычные похожие цвета */}
 								<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 									{similarColors.length > 0 ? (
 										similarColors.map(similarColor => (
@@ -602,6 +806,25 @@ export default function ColorDetailsModal({
 											Похожих рецептов не найдено
 										</p>
 									)}
+								</div>
+							</TabsContent>
+
+							<TabsContent
+								value='metamerism'
+								className='overflow-x-hidden mt-6'
+							>
+								<div
+									className={`rounded-xl ${
+										isDark ? 'bg-gray-700/30' : 'bg-gray-50/50'
+									}`}
+								>
+									<MetamerismAnalyzer
+										color={{
+											hex: normalizedHex,
+											lab: colorLab,
+											name: color.name,
+										}}
+									/>
 								</div>
 							</TabsContent>
 
