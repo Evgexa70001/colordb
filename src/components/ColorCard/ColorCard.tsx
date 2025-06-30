@@ -451,7 +451,7 @@ export default function ColorCard({
               font-size: 14px;
             }
             .recipe-cell {
-              font-size: 11px;
+              font-size: 18px;
               line-height: 1.2;
               vertical-align: top;
             }
