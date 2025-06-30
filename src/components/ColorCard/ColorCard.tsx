@@ -419,8 +419,8 @@ export default function ColorCard({
               background: white;
             }
             .sticker {
-              width: 85mm;
-              height: 55mm;
+              width: 115mm;
+              height: 90mm;
               border: 2px solid #000;
               border-radius: 3px;
               display: block;
@@ -431,12 +431,12 @@ export default function ColorCard({
               width: 100%;
               height: 100%;
               border-collapse: collapse;
-              font-size: 11px;
-              line-height: 1.2;
+              font-size: 13px;
+              line-height: 1.3;
             }
             .sticker-table td {
               border: 1px solid #000;
-              padding: 2px 4px;
+              padding: 3px 6px;
               vertical-align: middle;
               font-weight: bold;
             }
@@ -444,21 +444,26 @@ export default function ColorCard({
               background-color: #e8e8e8;
               width: 35%;
               text-align: center;
-              font-size: 10px;
+              font-size: 12px;
             }
             .value-cell {
               text-align: center;
-              font-size: 12px;
+              font-size: 14px;
             }
             .recipe-cell {
-              font-size: 10px;
-              line-height: 1.1;
+              font-size: 11px;
+              line-height: 1.2;
+              vertical-align: top;
+            }
+            .sample-cell {
+              padding: 8px;
+              vertical-align: top;
             }
             @media print {
               body { margin: 0; padding: 5mm; }
               .sticker { 
-                width: 85mm; 
-                height: 55mm; 
+                width: 115mm; 
+                height: 90mm; 
                 page-break-after: always;
               }
             }
@@ -467,30 +472,30 @@ export default function ColorCard({
         <body>
           <div class="sticker">
             <table class="sticker-table">
-              <tr style="height: 15%;">
+              <tr style="height: 10%;">
                 <td class="label-cell">Номер тарного места</td>
                 <td class="label-cell">Материал</td>
               </tr>
-              <tr style="height: 15%;">
+              <tr style="height: 10%;">
                 <td class="value-cell">${shortLocation}</td>
                 <td class="value-cell">${firstRecipe?.material || 'Бумага'}</td>
               </tr>
-              <tr style="height: 15%;">
+              <tr style="height: 10%;">
                 <td class="label-cell">Номер Pantone</td>
                 <td class="label-cell">Анилокс</td>
               </tr>
-              <tr style="height: 15%;">
+              <tr style="height: 10%;">
                 <td class="value-cell">${color.name}${
 			color.alternativeName ? ` (${color.alternativeName})` : ''
 		}</td>
                 <td class="value-cell">${additionalColorsText}</td>
               </tr>
-              <tr style="height: 20%;">
+              <tr style="height: 10%;">
                 <td class="label-cell">Образец</td>
                 <td class="label-cell">Рецепт</td>
               </tr>
-              <tr style="height: 35%;">
-                <td style="padding: 5px;">
+              <tr style="height: 50%;">
+                <td class="sample-cell">
                   <!-- Пустое место для приклеивания образца -->
                 </td>
                 <td class="recipe-cell">${recipeText}</td>
