@@ -7,6 +7,7 @@ import {
 	orderBy,
 	limit,
 	Timestamp,
+	writeBatch,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { PantoneColor } from '@/types'
@@ -152,7 +153,7 @@ export async function getAnalyticsMetrics(selectedMonth?: Date): Promise<Analyti
 			monthEnd = now
 		}
 
-		let weekEvents, monthEvents, usageEvents
+		let weekEvents, monthEvents, usageEvents, monthUsageEvents
 		
 		try {
 			// Получаем все события color_created и фильтруем по времени в коде
@@ -181,29 +182,16 @@ export async function getAnalyticsMetrics(selectedMonth?: Date): Promise<Analyti
 				where('type', '==', 'color_created')
 			)
 			const monthEventsSnapshot = await getDocs(monthEventsQuery)
-			console.log('Всего событий color_created:', monthEventsSnapshot.docs.length)
 			
 			// Фильтруем события за месяц в коде
 			monthEvents = {
 				docs: monthEventsSnapshot.docs.filter(doc => {
 					const data = doc.data()
 					const eventTime = data.timestamp?.toDate?.() || data.timestamp
-					const isInRange = eventTime && eventTime >= monthStart && eventTime <= monthEnd
-					
-					console.log('Проверка события:', {
-						colorId: data.colorId,
-						eventTime: eventTime,
-						monthStart: monthStart,
-						monthEnd: monthEnd,
-						isInRange: isInRange
-					})
-					
-					return isInRange
+					return eventTime && eventTime >= monthStart && eventTime <= monthEnd
 				})
 			}
-			console.log('События после фильтрации за месяц:', monthEvents.docs.length)
 		} catch (error) {
-			console.error('Ошибка получения событий за месяц:', error)
 			monthEvents = { docs: [] }
 		}
 
@@ -223,8 +211,18 @@ export async function getAnalyticsMetrics(selectedMonth?: Date): Promise<Analyti
 					return eventTime && eventTime >= oneWeekAgo
 				})
 			}
+			
+			// Фильтруем события использования за месяц в коде
+			monthUsageEvents = {
+				docs: usageEventsSnapshot.docs.filter(doc => {
+					const data = doc.data()
+					const eventTime = data.timestamp?.toDate?.() || data.timestamp
+					return eventTime && eventTime >= monthStart && eventTime <= monthEnd
+				})
+			}
 		} catch (error) {
 			usageEvents = { docs: [] }
+			monthUsageEvents = { docs: [] }
 		}
 
 		// Подсчет использований по цветам
@@ -256,7 +254,36 @@ export async function getAnalyticsMetrics(selectedMonth?: Date): Promise<Analyti
 				})
 		}
 
-		const mostUsedColorsThisWeek = Array.from(usageMap.entries())
+		// Подсчет использований по цветам за месяц
+		const monthUsageMap = new Map<string, { count: number; name: string; hex: string }>()
+		monthUsageEvents.docs.forEach(doc => {
+			const data = doc.data() as AnalyticsEvent
+			const current = monthUsageMap.get(data.colorId) || { count: 0, name: '', hex: '' }
+			const color = colors.find(c => c.id === data.colorId)
+			
+			monthUsageMap.set(data.colorId, {
+				count: current.count + (data.metadata.usageAmount || 1),
+				name: color?.name || data.metadata.colorName || 'Неизвестный цвет',
+				hex: color?.hex || '#000000',
+			})
+		})
+
+		// Если нет данных из analytics за месяц, используем usageCount из colors (только с рецептами)
+		if (monthUsageMap.size === 0) {
+			colors
+				.filter(color => (color.usageCount || 0) > 0)
+				.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+				.slice(0, 5)
+				.forEach(color => {
+					monthUsageMap.set(color.id, {
+						count: color.usageCount || 0,
+						name: color.name,
+						hex: color.hex,
+					})
+				})
+		}
+
+		const mostUsedColorsThisMonth = Array.from(monthUsageMap.entries())
 			.map(([colorId, data]) => ({
 				colorId,
 				colorName: data.name,
@@ -267,14 +294,20 @@ export async function getAnalyticsMetrics(selectedMonth?: Date): Promise<Analyti
 			.slice(0, 5)
 
 		// Цвета созданные за месяц
-		const monthlyCreatedColors = await getColorsCreatedInMonth(colors, monthEvents.docs, monthStart, monthEnd)
+		const monthlyCreatedColors = await getColorsCreatedInMonth(colors, monthEvents.docs)
+
+		// Подсчитываем общее использование за выбранный месяц
+		const totalUsageThisMonth = monthUsageEvents.docs.reduce((sum, doc) => {
+			const data = doc.data() as AnalyticsEvent
+			return sum + (data.metadata.usageAmount || 1)
+		}, 0)
 
 		const result = {
 			totalColors: colors.length, // Используем только цвета с рецептами
-			totalUsage: colors.reduce((sum, color) => sum + (color.usageCount || 0), 0),
+			totalUsage: totalUsageThisMonth > 0 ? totalUsageThisMonth : colors.reduce((sum, color) => sum + (color.usageCount || 0), 0),
 			colorsCreatedThisWeek: weekEvents.docs.length,
 			colorsCreatedThisMonth: monthEvents.docs.length,
-			mostUsedColorsThisWeek,
+			mostUsedColorsThisMonth,
 			monthlyCreatedColors,
 		}
 		
@@ -359,9 +392,7 @@ function parseRecipes(recipeString: string) {
 // Получение цветов созданных за месяц
 async function getColorsCreatedInMonth(
 	colors: PantoneColor[], 
-	monthEvents: any[],
-	monthStart: Date,
-	monthEnd: Date
+	monthEvents: any[]
 ): Promise<Array<{
 	colorId: string
 	colorName: string
@@ -377,21 +408,15 @@ async function getColorsCreatedInMonth(
 	}>()
 
 	// Получаем цвета ТОЛЬКО из событий аналитики
-	console.log('getColorsCreatedInMonth - получили событий:', monthEvents.length)
-	console.log('Период поиска:', monthStart, 'до', monthEnd)
-	
-	monthEvents.forEach((eventDoc, index) => {
+	monthEvents.forEach((eventDoc) => {
 		// monthEvents - это массив документов из Firebase, нужно получить данные
 		const event = eventDoc.data ? eventDoc.data() : eventDoc
-		console.log(`Событие ${index}:`, event)
 		
 		if (event.type === 'color_created') {
 			const color = colors.find(c => c.id === event.colorId)
-			console.log(`Найден цвет для события:`, color?.name || 'не найден')
 			
 			if (color) {
 				const eventDate = event.timestamp?.toDate?.() || event.timestamp
-				console.log(`Дата события:`, eventDate)
 				
 				createdColorsMap.set(event.colorId, {
 					colorName: color.name,
@@ -399,12 +424,9 @@ async function getColorsCreatedInMonth(
 					createdAt: eventDate,
 					recipe: color.recipe
 				})
-				console.log(`Добавлен цвет в результат:`, color.name)
 			}
 		}
 	})
-	
-	console.log('Итого цветов в результате:', createdColorsMap.size)
 
 	// НЕ используем fallback - показываем только те цвета, которые есть в аналитике
 
@@ -674,4 +696,104 @@ function generateRecommendations(colors: PantoneColor[]): string[] {
 	}
 
 	return recommendations
+}
+
+// Функция для очистки старых данных аналитики (оставляем только последние 2 месяца)
+export async function cleanupOldAnalyticsData(): Promise<{
+	deletedCount: number
+	success: boolean
+	error?: string
+}> {
+	try {
+		const now = new Date()
+		// Оставляем данные за последние 2 месяца
+		const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+		
+		console.log(`Cleaning up analytics data older than ${twoMonthsAgo.toLocaleDateString('ru-RU')}`)
+		
+		// Получаем все события аналитики
+		const analyticsQuery = query(collection(db, 'analytics'))
+		const snapshot = await getDocs(analyticsQuery)
+		
+		// Фильтруем старые события
+		const oldEvents: any[] = []
+		snapshot.docs.forEach(docSnapshot => {
+			const data = docSnapshot.data()
+			const eventTime = data.timestamp?.toDate?.() || data.timestamp
+			
+			if (eventTime && eventTime < twoMonthsAgo) {
+				oldEvents.push(docSnapshot)
+			}
+		})
+		
+		console.log(`Found ${oldEvents.length} old analytics events to delete`)
+		
+		if (oldEvents.length === 0) {
+			return {
+				deletedCount: 0,
+				success: true
+			}
+		}
+		
+		// Удаляем старые события пачками (максимум 500 за раз для Firestore)
+		const batchSize = 500
+		let deletedCount = 0
+		
+		for (let i = 0; i < oldEvents.length; i += batchSize) {
+			const batch = writeBatch(db)
+			const batchEvents = oldEvents.slice(i, i + batchSize)
+			
+			batchEvents.forEach(eventDoc => {
+				batch.delete(eventDoc.ref)
+			})
+			
+			await batch.commit()
+			deletedCount += batchEvents.length
+			
+			console.log(`Deleted ${deletedCount}/${oldEvents.length} old analytics events`)
+		}
+		
+		console.log(`Successfully cleaned up ${deletedCount} old analytics events`)
+		
+		return {
+			deletedCount,
+			success: true
+		}
+	} catch (error) {
+		console.error('Error cleaning up old analytics data:', error)
+		return {
+			deletedCount: 0,
+			success: false,
+			error: error instanceof Error ? error.message : 'Unknown error'
+		}
+	}
+}
+
+// Автоматическая очистка при каждой загрузке метрик (раз в день максимум)
+let lastCleanupDate: Date | null = null
+
+export async function performAutomaticCleanup(): Promise<void> {
+	try {
+		const now = new Date()
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+		
+		// Проверяем, нужна ли очистка (раз в день максимум)
+		if (lastCleanupDate && lastCleanupDate >= today) {
+			return
+		}
+		
+		console.log('Performing automatic cleanup of old analytics data...')
+		const result = await cleanupOldAnalyticsData()
+		
+		if (result.success) {
+			lastCleanupDate = today
+			if (result.deletedCount > 0) {
+				console.log(`Automatic cleanup completed: ${result.deletedCount} old records deleted`)
+			}
+		} else {
+			console.error('Automatic cleanup failed:', result.error)
+		}
+	} catch (error) {
+		console.error('Error in automatic cleanup:', error)
+	}
 } 

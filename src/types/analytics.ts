@@ -20,7 +20,7 @@ export interface AnalyticsMetrics {
 	totalUsage: number
 	colorsCreatedThisWeek: number
 	colorsCreatedThisMonth: number
-	mostUsedColorsThisWeek: Array<{
+	mostUsedColorsThisMonth: Array<{
 		colorId: string
 		colorName: string
 		hex: string

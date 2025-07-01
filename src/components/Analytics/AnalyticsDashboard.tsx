@@ -7,7 +7,8 @@ import {
 	AlertTriangle,
 	Download,
 	Calendar,
-	RotateCcw
+	RotateCcw,
+	Trash2
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
 import { Button } from '@components/ui/Button'
@@ -16,7 +17,9 @@ import {
 	getAnalyticsMetrics, 
 	generateWeeklyReport, 
 	generateMonthlyReport,
-	testFirebaseConnection
+	testFirebaseConnection,
+	performAutomaticCleanup,
+	cleanupOldAnalyticsData
 } from '@lib/analytics'
 import type { AnalyticsMetrics, WeeklyReport } from '@/types/analytics'
 
@@ -134,6 +137,7 @@ const AnalyticsDashboard = forwardRef<AnalyticsDashboardRef, AnalyticsDashboardP
 	const [generatingReport, setGeneratingReport] = useState(false)
 	const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 	const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
+	const [cleaningData, setCleaningData] = useState(false)
 
 	// Expose refresh function via ref
 	useImperativeHandle(ref, () => ({
@@ -227,12 +231,11 @@ const AnalyticsDashboard = forwardRef<AnalyticsDashboardRef, AnalyticsDashboardP
 				throw new Error('Нет подключения к Firebase')
 			}
 			
+			// Выполняем автоматическую очистку старых данных (раз в день)
+			await performAutomaticCleanup()
+			
 			// Принудительно загружаем свежие данные
 			console.log('Force loading fresh analytics data...')
-			console.log('Выбранный месяц:', selectedMonth)
-			console.log('Начало месяца:', new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1))
-			console.log('Конец месяца:', new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59, 999))
-			
 			const [metricsData, weeklyData] = await Promise.all([
 				getAnalyticsMetrics(selectedMonth).catch(err => {
 					console.error('Error loading metrics:', err)
@@ -328,6 +331,35 @@ ${report.topColors.length > 0
 		}
 	}
 
+	const handleCleanupOldData = async () => {
+		try {
+			setCleaningData(true)
+			toast.loading('Очистка старых данных аналитики...')
+			
+			const result = await cleanupOldAnalyticsData()
+			
+			if (result.success) {
+				toast.dismiss()
+				if (result.deletedCount > 0) {
+					toast.success(`Очистка завершена: удалено ${result.deletedCount} старых записей`)
+					// Перезагружаем данные после очистки
+					await loadMetrics()
+				} else {
+					toast.success('Старых данных для удаления не найдено')
+				}
+			} else {
+				toast.dismiss()
+				toast.error(`Ошибка очистки: ${result.error}`)
+			}
+		} catch (error) {
+			toast.dismiss()
+			console.error('Error cleaning up data:', error)
+			toast.error('Ошибка при очистке данных')
+		} finally {
+			setCleaningData(false)
+		}
+	}
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
@@ -360,7 +392,7 @@ ${report.topColors.length > 0
 		totalUsage: 0,
 		colorsCreatedThisWeek: 0,
 		colorsCreatedThisMonth: 0,
-		mostUsedColorsThisWeek: [],
+		mostUsedColorsThisMonth: [],
 		monthlyCreatedColors: []
 	}
 
@@ -423,6 +455,14 @@ ${report.topColors.length > 0
 					</Button>
 					<Button
 						variant="secondary"
+						leftIcon={<Trash2 className="w-4 h-4" />}
+						onClick={handleCleanupOldData}
+						disabled={cleaningData}
+					>
+						{cleaningData ? 'Очистка...' : 'Очистить старые данные'}
+					</Button>
+					<Button
+						variant="secondary"
 						leftIcon={<Calendar className="w-4 h-4" />}
 						onClick={handleGenerateWeeklyReport}
 						disabled={generatingReport}
@@ -448,7 +488,7 @@ ${report.topColors.length > 0
 					isDark={isDark}
 				/>
 				<MetricCard
-					title="Использований за месяц"
+					title={`Использований за ${selectedMonth.toLocaleDateString('ru-RU', { month: 'long' })}`}
 					value={safeMetrics.totalUsage}
 					icon={<Activity className={`w-6 h-6 ${isDark ? 'text-green-400' : 'text-green-600'}`} />}
 					isDark={isDark}
@@ -471,25 +511,25 @@ ${report.topColors.length > 0
 
 			{/* Charts and Details */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* Top Colors This Week */}
+				{/* Top Colors This Month */}
 				<div className={`p-6 rounded-xl shadow-sm ${
 					isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
 				} border`}>
 					<h3 className={`text-lg font-semibold mb-4 ${
 						isDark ? 'text-white' : 'text-gray-900'
 					}`}>
-						Топ цвета недели
+						Топ цвета {selectedMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toLowerCase()}
 					</h3>
 					<div className="space-y-3">
-						{safeMetrics.mostUsedColorsThisWeek.length > 0 ? (
-							safeMetrics.mostUsedColorsThisWeek.map((color) => (
+						{safeMetrics.mostUsedColorsThisMonth.length > 0 ? (
+							safeMetrics.mostUsedColorsThisMonth.map((color) => (
 								<TopColorItem key={color.colorId} color={color} isDark={isDark} />
 							))
 						) : (
 							<p className={`text-sm ${
 								isDark ? 'text-gray-400' : 'text-gray-600'
 							}`}>
-								Нет данных за эту неделю
+								Нет данных за {selectedMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toLowerCase()}
 							</p>
 						)}
 					</div>
@@ -502,7 +542,7 @@ ${report.topColors.length > 0
 					<h3 className={`text-lg font-semibold mb-4 ${
 						isDark ? 'text-white' : 'text-gray-900'
 					}`}>
-						Цвета созданные за месяц
+						Цвета созданные в {selectedMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toLowerCase()}
 					</h3>
 					<div className="space-y-3">
 						{safeMetrics.monthlyCreatedColors.length > 0 ? (
@@ -513,7 +553,7 @@ ${report.topColors.length > 0
 							<p className={`text-sm ${
 								isDark ? 'text-gray-400' : 'text-gray-600'
 							}`}>
-								Нет данных за этот месяц
+								Нет данных за {selectedMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toLowerCase()}
 							</p>
 						)}
 					</div>
