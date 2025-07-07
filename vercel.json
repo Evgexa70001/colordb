@@ -11,6 +11,18 @@
 		{
 			"src": "/signup",
 			"dest": "/"
+		},
+		{
+			"src": "/quality",
+			"dest": "/"
+		},
+		{
+			"src": "/visualization",
+			"dest": "/"
+		},
+		{
+			"src": "/shelves",
+			"dest": "/"
 		}
 	]
 }
