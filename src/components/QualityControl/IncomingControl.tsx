@@ -4,6 +4,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ReferencePaint, NewPaintTest } from '@/types'
 import ReferencePaints from './ReferencePaints'
 import NewPaintTests from './NewPaintTests'
+import {
+	saveReferencePaint,
+	updateReferencePaint,
+	deleteReferencePaint,
+	getReferencePaints,
+	saveNewPaintTest,
+	deleteNewPaintTest,
+	getNewPaintTests,
+} from '@/lib/qualityControl'
+import { toast } from 'react-hot-toast'
 
 const IncomingControl: React.FC = () => {
 	const { isDark } = useTheme()
@@ -13,67 +23,125 @@ const IncomingControl: React.FC = () => {
 	const [activeSection, setActiveSection] = useState<'reference' | 'tests'>(
 		'reference'
 	)
+	const [loading, setLoading] = useState(true)
 
-	// Загрузка данных из localStorage (в реальном приложении - из API)
+	// Загрузка данных из Firebase
 	useEffect(() => {
-		const savedReferencePaints = localStorage.getItem('referencePaints')
-		const savedNewPaintTests = localStorage.getItem('newPaintTests')
+		const loadData = async () => {
+			try {
+				setLoading(true)
+				const [paints, tests] = await Promise.all([
+					getReferencePaints(),
+					getNewPaintTests(),
+				])
+				setReferencePaints(paints)
+				setNewPaintTests(tests)
+			} catch (error) {
+				console.error('Error loading data:', error)
+				if (error instanceof Error && error.message !== 'offline') {
+					toast.error('Ошибка при загрузке данных')
+				}
+			} finally {
+				setLoading(false)
+			}
+		}
 
-		if (savedReferencePaints) {
-			setReferencePaints(JSON.parse(savedReferencePaints))
-		}
-		if (savedNewPaintTests) {
-			setNewPaintTests(JSON.parse(savedNewPaintTests))
-		}
+		loadData()
 	}, [])
 
-	// Сохранение данных в localStorage
-	useEffect(() => {
-		localStorage.setItem('referencePaints', JSON.stringify(referencePaints))
-	}, [referencePaints])
-
-	useEffect(() => {
-		localStorage.setItem('newPaintTests', JSON.stringify(newPaintTests))
-	}, [newPaintTests])
-
-	const handleAddReferencePaint = (
+	const handleAddReferencePaint = async (
 		paint: Omit<ReferencePaint, 'id' | 'createdBy'>
 	) => {
-		const newPaint: ReferencePaint = {
-			...paint,
-			id: Date.now().toString(),
-			createdBy: user?.uid || 'unknown',
+		try {
+			const newPaint: Omit<ReferencePaint, 'id'> = {
+				...paint,
+				createdBy: user?.uid || 'unknown',
+			}
+			const docRef = await saveReferencePaint(newPaint)
+			
+			// Добавляем в локальное состояние с полученным ID
+			const savedPaint: ReferencePaint = {
+				...newPaint,
+				id: docRef.id,
+			}
+			setReferencePaints(prev => [...prev, savedPaint])
+			toast.success('Эталонная краска добавлена')
+		} catch (error) {
+			console.error('Error adding reference paint:', error)
+			if (error instanceof Error && error.message !== 'offline') {
+				toast.error('Ошибка при добавлении эталонной краски')
+			}
 		}
-		setReferencePaints(prev => [...prev, newPaint])
 	}
 
-	const handleUpdateReferencePaint = (
+	const handleUpdateReferencePaint = async (
 		id: string,
 		paint: Partial<ReferencePaint>
 	) => {
-		setReferencePaints(prev =>
-			prev.map(p => (p.id === id ? { ...p, ...paint } : p))
-		)
+		try {
+			await updateReferencePaint(id, paint)
+			setReferencePaints(prev =>
+				prev.map(p => (p.id === id ? { ...p, ...paint } : p))
+			)
+			toast.success('Эталонная краска обновлена')
+		} catch (error) {
+			console.error('Error updating reference paint:', error)
+			if (error instanceof Error && error.message !== 'offline') {
+				toast.error('Ошибка при обновлении эталонной краски')
+			}
+		}
 	}
 
-	const handleDeleteReferencePaint = (id: string) => {
-		setReferencePaints(prev => prev.filter(p => p.id !== id))
+	const handleDeleteReferencePaint = async (id: string) => {
+		try {
+			await deleteReferencePaint(id)
+			setReferencePaints(prev => prev.filter(p => p.id !== id))
+			toast.success('Эталонная краска удалена')
+		} catch (error) {
+			console.error('Error deleting reference paint:', error)
+			if (error instanceof Error && error.message !== 'offline') {
+				toast.error('Ошибка при удалении эталонной краски')
+			}
+		}
 	}
 
-	const handleAddNewPaintTest = (
+	const handleAddNewPaintTest = async (
 		test: Omit<NewPaintTest, 'id' | 'testedAt' | 'testedBy'>
 	) => {
-		const newTest: NewPaintTest = {
-			...test,
-			id: Date.now().toString(),
-			testedAt: new Date(),
-			testedBy: user?.uid || 'unknown',
+		try {
+			const newTest: Omit<NewPaintTest, 'id'> = {
+				...test,
+				testedAt: new Date(),
+				testedBy: user?.uid || 'unknown',
+			}
+			const docRef = await saveNewPaintTest(newTest)
+			
+			// Добавляем в локальное состояние с полученным ID
+			const savedTest: NewPaintTest = {
+				...newTest,
+				id: docRef.id,
+			}
+			setNewPaintTests(prev => [...prev, savedTest])
+			toast.success('Тест новой краски добавлен')
+		} catch (error) {
+			console.error('Error adding new paint test:', error)
+			if (error instanceof Error && error.message !== 'offline') {
+				toast.error('Ошибка при добавлении теста')
+			}
 		}
-		setNewPaintTests(prev => [...prev, newTest])
 	}
 
-	const handleDeleteNewPaintTest = (id: string) => {
-		setNewPaintTests(prev => prev.filter(t => t.id !== id))
+	const handleDeleteNewPaintTest = async (id: string) => {
+		try {
+			await deleteNewPaintTest(id)
+			setNewPaintTests(prev => prev.filter(t => t.id !== id))
+			toast.success('Тест удален')
+		} catch (error) {
+			console.error('Error deleting new paint test:', error)
+			if (error instanceof Error && error.message !== 'offline') {
+				toast.error('Ошибка при удалении теста')
+			}
+		}
 	}
 
 	const getStats = () => {
@@ -95,6 +163,19 @@ const IncomingControl: React.FC = () => {
 	}
 
 	const stats = getStats()
+
+	if (loading) {
+		return (
+			<div className='flex items-center justify-center h-64'>
+				<div className='text-center'>
+					<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
+					<div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+						Загрузка данных...
+					</div>
+				</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className='space-y-6'>
