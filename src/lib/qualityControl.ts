@@ -21,8 +21,15 @@ export async function saveReferencePaint(
 ): Promise<DocumentReference> {
 	try {
 		const referencePaintsRef = collection(db, 'referencePaints')
+		
+		// Очищаем undefined значения перед сохранением
+		const cleanPaint = { ...paint }
+		if (cleanPaint.notes === undefined) {
+			delete cleanPaint.notes
+		}
+		
 		const docRef = await addDoc(referencePaintsRef, {
-			...paint,
+			...cleanPaint,
 			createdAt: serverTimestamp(),
 			updatedAt: serverTimestamp(),
 		})
@@ -46,8 +53,15 @@ export async function updateReferencePaint(
 ): Promise<void> {
 	try {
 		const paintRef = doc(db, 'referencePaints', id)
+		
+		// Очищаем undefined значения перед обновлением
+		const cleanUpdates = { ...updates }
+		if (cleanUpdates.notes === undefined) {
+			delete cleanUpdates.notes
+		}
+		
 		await updateDoc(paintRef, {
-			...updates,
+			...cleanUpdates,
 			updatedAt: serverTimestamp(),
 		})
 	} catch (error) {
@@ -109,8 +123,24 @@ export async function saveNewPaintTest(
 ): Promise<DocumentReference> {
 	try {
 		const newPaintTestsRef = collection(db, 'newPaintTests')
+		
+		// Очищаем undefined значения перед сохранением
+		const cleanTest = { ...test }
+		if (cleanTest.notes === undefined) {
+			delete cleanTest.notes
+		}
+		if (cleanTest.attachments === undefined) {
+			delete cleanTest.attachments
+		}
+		if (cleanTest.referencePaintId === undefined) {
+			delete cleanTest.referencePaintId
+		}
+		if (cleanTest.deltaE2000 === undefined) {
+			delete cleanTest.deltaE2000
+		}
+		
 		const docRef = await addDoc(newPaintTestsRef, {
-			...test,
+			...cleanTest,
 			testedAt: serverTimestamp(),
 			createdAt: serverTimestamp(),
 		})
@@ -134,8 +164,24 @@ export async function updateNewPaintTest(
 ): Promise<void> {
 	try {
 		const testRef = doc(db, 'newPaintTests', id)
+		
+		// Очищаем undefined значения перед обновлением
+		const cleanUpdates = { ...updates }
+		if (cleanUpdates.notes === undefined) {
+			delete cleanUpdates.notes
+		}
+		if (cleanUpdates.attachments === undefined) {
+			delete cleanUpdates.attachments
+		}
+		if (cleanUpdates.referencePaintId === undefined) {
+			delete cleanUpdates.referencePaintId
+		}
+		if (cleanUpdates.deltaE2000 === undefined) {
+			delete cleanUpdates.deltaE2000
+		}
+		
 		await updateDoc(testRef, {
-			...updates,
+			...cleanUpdates,
 			updatedAt: serverTimestamp(),
 		})
 	} catch (error) {
