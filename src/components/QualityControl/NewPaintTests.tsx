@@ -41,6 +41,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 		b: '',
 		referencePaintId: '',
 		notes: '',
+		manualDeltaE: '',
 	})
 	const [calculatedDeltaE, setCalculatedDeltaE] = useState<number | null>(null)
 	const [selectedCalibration, setSelectedCalibration] = useState<string>('xrite')
@@ -82,8 +83,10 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 			b: parseFloat(formData.b),
 		}
 
+		const manual = formData.manualDeltaE.trim()
+		const finalDeltaE = manual !== '' ? parseFloat(manual) : calculatedDeltaE
 		const status =
-			calculatedDeltaE !== null && calculatedDeltaE <= 2 ? 'passed' : 'failed'
+			finalDeltaE == null ? 'pending' : finalDeltaE <= 2 ? 'passed' : 'failed'
 
 		onAdd({
 			name: formData.name,
@@ -91,7 +94,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 			expiryDate: new Date(formData.expiryDate),
 			labValues,
 			referencePaintId: formData.referencePaintId || undefined,
-			deltaE2000: calculatedDeltaE || undefined,
+			deltaE2000: finalDeltaE ?? undefined,
 			status,
 			notes: formData.notes || undefined,
 		})
@@ -106,6 +109,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 			b: '',
 			referencePaintId: '',
 			notes: '',
+			manualDeltaE: '',
 		})
 		setCalculatedDeltaE(null)
 		setSelectedCalibration('xrite')
@@ -285,7 +289,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 					<div
 						className={`p-6 rounded-lg w-full max-w-md ${
 							isDark ? 'bg-gray-800' : 'bg-white'
-						}`}
+						} max-h-[90vh] overflow-y-auto`}
 					>
 						<h3
 							className={`text-lg font-semibold mb-4 ${
@@ -397,7 +401,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 										))}
 								</select>
 							</div>
-							
+
 							{calculatedDeltaE !== null && (
 								<div
 									className={`p-3 rounded-lg ${
@@ -424,6 +428,32 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 									</p>
 								</div>
 							)}
+
+							<div>
+								<label
+									className={`block text-sm font-medium mb-2 ${
+										isDark ? 'text-gray-300' : 'text-gray-700'
+									}`}
+								>
+									ΔE вручную (необязательно)
+								</label>
+								<input
+									type='number'
+									step='0.01'
+									value={formData.manualDeltaE}
+									onChange={e => setFormData({ ...formData, manualDeltaE: e.target.value })}
+									className={`w-full px-3 py-2 rounded-lg border ${
+										isDark
+											? 'bg-gray-700 border-gray-600 text-white'
+											: 'bg-white border-gray-300 text-gray-900'
+									} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+									placeholder='Напр., 1.75'
+								/>
+								<p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+									Если заполнено, будет использоваться вместо авторасчета.
+								</p>
+							</div>
+
 							<div>
 								<label
 									className={`block text-sm font-medium mb-2 ${
@@ -460,6 +490,7 @@ const NewPaintTests: React.FC<NewPaintTestsProps> = ({
 											b: '',
 											referencePaintId: '',
 											notes: '',
+											manualDeltaE: '',
 										})
 										setCalculatedDeltaE(null)
 									}}

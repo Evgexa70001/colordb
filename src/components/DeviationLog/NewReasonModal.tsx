@@ -27,19 +27,10 @@ const NewReasonModal: React.FC<NewReasonModalProps> = ({
 	const [formData, setFormData] = useState({
 		colorId: colorId || '',
 		colorName: colorName || '',
+		technicalCardNumber: '',
 		description: '',
-		status: 'proposed' as ColorCreationReason['status'],
-		technicalRequirements: {
-			actualColorAccuracy: undefined as number | undefined,
-			actualLightingConditions: [] as string[],
-			actualSubstrateCompatibility: [] as string[],
-			actualDurabilityRequirements: [] as string[],
-			achievedColorValues: {
-				lab: { l: 0, a: 0, b: 0 },
-			},
-			productionNotes: '',
-		},
-		notes: '',
+		lab: { l: '', a: '', b: '' } as { l: string | number; a: string | number; b: string | number },
+		productionNotes: '',
 	})
 	const [loading, setLoading] = useState(false)
 
@@ -60,73 +51,29 @@ const NewReasonModal: React.FC<NewReasonModalProps> = ({
 			const newReason: Omit<ColorCreationReason, 'id'> = {
 				colorId: formData.colorId,
 				colorName: formData.colorName.trim(),
-				description: formData.description.trim(),
-				status: formData.status,
+				description: formData.description.trim(), // Причина создания
 				createdBy: user.uid,
 				createdAt: new Date(),
-				technicalRequirements:
-					formData.technicalRequirements.actualColorAccuracy ||
-					formData.technicalRequirements.actualLightingConditions.length > 0 ||
-					formData.technicalRequirements.actualSubstrateCompatibility.length >
-						0 ||
-					formData.technicalRequirements.actualDurabilityRequirements.length >
-						0 ||
-					formData.technicalRequirements.achievedColorValues.lab.l !== 0 ||
-					formData.technicalRequirements.achievedColorValues.lab.a !== 0 ||
-					formData.technicalRequirements.achievedColorValues.lab.b !== 0 ||
-					formData.technicalRequirements.productionNotes.trim()
-						? (() => {
-								const techReq: any = {}
-
-								if (formData.technicalRequirements.actualColorAccuracy) {
-									techReq.actualColorAccuracy =
-										formData.technicalRequirements.actualColorAccuracy
-								}
-
-								if (
-									formData.technicalRequirements.actualLightingConditions
-										.length > 0
-								) {
-									techReq.actualLightingConditions =
-										formData.technicalRequirements.actualLightingConditions
-								}
-
-								if (
-									formData.technicalRequirements.actualSubstrateCompatibility
-										.length > 0
-								) {
-									techReq.actualSubstrateCompatibility =
-										formData.technicalRequirements.actualSubstrateCompatibility
-								}
-
-								if (
-									formData.technicalRequirements.actualDurabilityRequirements
-										.length > 0
-								) {
-									techReq.actualDurabilityRequirements =
-										formData.technicalRequirements.actualDurabilityRequirements
-								}
-
-								if (
-									formData.technicalRequirements.achievedColorValues.lab.l !==
-										0 ||
-									formData.technicalRequirements.achievedColorValues.lab.a !==
-										0 ||
-									formData.technicalRequirements.achievedColorValues.lab.b !== 0
-								) {
-									techReq.achievedColorValues =
-										formData.technicalRequirements.achievedColorValues
-								}
-
-								if (formData.technicalRequirements.productionNotes.trim()) {
-									techReq.productionNotes =
-										formData.technicalRequirements.productionNotes.trim()
-								}
-
-								return techReq
-						  })()
-						: undefined,
-				...(formData.notes.trim() ? { notes: formData.notes.trim() } : {}),
+				status: 'proposed',
+				technicalCardNumber: formData.technicalCardNumber.trim() || undefined,
+				technicalRequirements: (() => {
+					const hasLab = formData.lab.l !== '' || formData.lab.a !== '' || formData.lab.b !== ''
+					const techReq: any = {}
+					if (hasLab) {
+						techReq.achievedColorValues = {
+							lab: {
+								l: Number(formData.lab.l) || 0,
+								a: Number(formData.lab.a) || 0,
+								b: Number(formData.lab.b) || 0,
+							},
+						}
+					}
+					const notes = formData.productionNotes.trim()
+					if (notes) {
+						techReq.productionNotes = notes
+					}
+					return Object.keys(techReq).length ? techReq : undefined
+				})(),
 			}
 
 			const docRef = await saveColorCreationReason(newReason)
@@ -153,19 +100,10 @@ const NewReasonModal: React.FC<NewReasonModalProps> = ({
 		setFormData({
 			colorId: colorId || '',
 			colorName: colorName || '',
+			technicalCardNumber: '',
 			description: '',
-			status: 'proposed',
-			technicalRequirements: {
-				actualColorAccuracy: undefined,
-				actualLightingConditions: [],
-				actualSubstrateCompatibility: [],
-				actualDurabilityRequirements: [],
-				achievedColorValues: {
-					lab: { l: 0, a: 0, b: 0 },
-				},
-				productionNotes: '',
-			},
-			notes: '',
+			lab: { l: '', a: '', b: '' },
+			productionNotes: '',
 		})
 	}
 
@@ -201,27 +139,18 @@ const NewReasonModal: React.FC<NewReasonModalProps> = ({
 					</div>
 				</div>
 
-				<form onSubmit={handleSubmit} className='p-6 space-y-6'>
-					{/* Основная информация */}
+				<form onSubmit={handleSubmit} noValidate className='p-6 space-y-6'>
 					<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 						<div>
-							<label
-								className={`block text-sm font-medium mb-2 ${
-									isDark ? 'text-gray-300' : 'text-gray-700'
-								}`}
-							>
+							<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
 								Название цвета *
 							</label>
 							<input
 								type='text'
 								value={formData.colorName}
-								onChange={e =>
-									setFormData(prev => ({ ...prev, colorName: e.target.value }))
-								}
+								onChange={e => setFormData(prev => ({ ...prev, colorName: e.target.value }))}
 								className={`w-full px-3 py-2 rounded-lg border ${
-									isDark
-										? 'bg-gray-700 border-gray-600 text-white'
-										: 'bg-white border-gray-300 text-gray-900'
+									isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
 								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
 								placeholder='Введите название цвета'
 								required
@@ -229,427 +158,100 @@ const NewReasonModal: React.FC<NewReasonModalProps> = ({
 						</div>
 
 						<div>
-							<label
-								className={`block text-sm font-medium mb-2 ${
-									isDark ? 'text-gray-300' : 'text-gray-700'
-								}`}
-							>
-								Статус
+							<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+								Номер тех. карты
 							</label>
-							<select
-								value={formData.status}
-								onChange={e =>
-									setFormData(prev => ({
-										...prev,
-										status: e.target.value as ColorCreationReason['status'],
-									}))
-								}
+							<input
+								type='text'
+								value={formData.technicalCardNumber}
+								onChange={e => setFormData(prev => ({ ...prev, technicalCardNumber: e.target.value }))}
 								className={`w-full px-3 py-2 rounded-lg border ${
-									isDark
-										? 'bg-gray-700 border-gray-600 text-white'
-										: 'bg-white border-gray-300 text-gray-900'
+									isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
 								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-							>
-								<option value='proposed'>Предложено</option>
-								<option value='approved'>Одобрено</option>
-								<option value='in_development'>В разработке</option>
-								<option value='completed'>Завершено</option>
-								<option value='rejected'>Отклонено</option>
-							</select>
-						</div>
-					</div>
-
-					<div>
-						<label
-							className={`block text-sm font-medium mb-2 ${
-								isDark ? 'text-gray-300' : 'text-gray-700'
-							}`}
-						>
-							Описание *
-						</label>
-						<textarea
-							value={formData.description}
-							onChange={e =>
-								setFormData(prev => ({ ...prev, description: e.target.value }))
-							}
-							rows={3}
-							className={`w-full px-3 py-2 rounded-lg border ${
-								isDark
-									? 'bg-gray-700 border-gray-600 text-white'
-									: 'bg-white border-gray-300 text-gray-900'
-							} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-							placeholder='Подробно опишите причину создания цвета'
-							required
-						/>
-					</div>
-
-					{/* Технические требования созданного цвета */}
-					<div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
-						<h3
-							className={`text-lg font-medium mb-4 ${
-								isDark ? 'text-white' : 'text-gray-900'
-							}`}
-						>
-							Технические характеристики созданного цвета (необязательно)
-						</h3>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-							<div>
-								<label
-									className={`block text-sm font-medium mb-2 ${
-										isDark ? 'text-gray-300' : 'text-gray-700'
-									}`}
-								>
-									Фактическая точность цвета (ΔE)
-								</label>
-								<input
-									type='number'
-									step='0.1'
-									value={
-										formData.technicalRequirements.actualColorAccuracy || ''
-									}
-									onChange={e =>
-										setFormData(prev => ({
-											...prev,
-											technicalRequirements: {
-												...prev.technicalRequirements,
-												actualColorAccuracy: e.target.value
-													? Number(e.target.value)
-													: undefined,
-											},
-										}))
-									}
-									className={`w-full px-3 py-2 rounded-lg border ${
-										isDark
-											? 'bg-gray-700 border-gray-600 text-white'
-											: 'bg-white border-gray-300 text-gray-900'
-									} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-									placeholder='2.0'
-								/>
-							</div>
-
-							<div>
-								<label
-									className={`block text-sm font-medium mb-2 ${
-										isDark ? 'text-gray-300' : 'text-gray-700'
-									}`}
-								>
-									Условия освещения при создании
-								</label>
-								<input
-									type='text'
-									value={formData.technicalRequirements.actualLightingConditions.join(
-										', '
-									)}
-									onChange={e =>
-										setFormData(prev => ({
-											...prev,
-											technicalRequirements: {
-												...prev.technicalRequirements,
-												actualLightingConditions: e.target.value
-													.split(',')
-													.map(s => s.trim())
-													.filter(s => s),
-											},
-										}))
-									}
-									className={`w-full px-3 py-2 rounded-lg border ${
-										isDark
-											? 'bg-gray-700 border-gray-600 text-white'
-											: 'bg-white border-gray-300 text-gray-900'
-									} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-									placeholder='Дневной свет, флуоресцентный'
-								/>
-							</div>
-
-							<div>
-								<label
-									className={`block text-sm font-medium mb-2 ${
-										isDark ? 'text-gray-300' : 'text-gray-700'
-									}`}
-								>
-									Материалы, на которых создан цвет
-								</label>
-								<input
-									type='text'
-									value={formData.technicalRequirements.actualSubstrateCompatibility.join(
-										', '
-									)}
-									onChange={e =>
-										setFormData(prev => ({
-											...prev,
-											technicalRequirements: {
-												...prev.technicalRequirements,
-												actualSubstrateCompatibility: e.target.value
-													.split(',')
-													.map(s => s.trim())
-													.filter(s => s),
-											},
-										}))
-									}
-									className={`w-full px-3 py-2 rounded-lg border ${
-										isDark
-											? 'bg-gray-700 border-gray-600 text-white'
-											: 'bg-white border-gray-300 text-gray-900'
-									} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-									placeholder='Бумага, картон, пластик'
-								/>
-							</div>
-
-							<div>
-								<label
-									className={`block text-sm font-medium mb-2 ${
-										isDark ? 'text-gray-300' : 'text-gray-700'
-									}`}
-								>
-									Требования к долговечности созданного цвета
-								</label>
-								<input
-									type='text'
-									value={formData.technicalRequirements.actualDurabilityRequirements.join(
-										', '
-									)}
-									onChange={e =>
-										setFormData(prev => ({
-											...prev,
-											technicalRequirements: {
-												...prev.technicalRequirements,
-												actualDurabilityRequirements: e.target.value
-													.split(',')
-													.map(s => s.trim())
-													.filter(s => s),
-											},
-										}))
-									}
-									className={`w-full px-3 py-2 rounded-lg border ${
-										isDark
-											? 'bg-gray-700 border-gray-600 text-white'
-											: 'bg-white border-gray-300 text-gray-900'
-									} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-									placeholder='Устойчивость к УФ, влаге'
-								/>
-							</div>
-						</div>
-
-						{/* Достигнутые значения цвета */}
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-							<div>
-								<label
-									className={`block text-sm font-medium mb-2 ${
-										isDark ? 'text-gray-300' : 'text-gray-700'
-									}`}
-								>
-									Достигнутый цвет (LAB)
-								</label>
-								<div className='grid grid-cols-3 gap-2'>
-									<div>
-										<label
-											className={`block text-xs font-medium mb-1 ${
-												isDark ? 'text-gray-300' : 'text-gray-700'
-											}`}
-										>
-											L
-										</label>
-										<input
-											type='number'
-											step='0.1'
-											value={
-												formData.technicalRequirements.achievedColorValues.lab
-													.l === 0
-													? ''
-													: formData.technicalRequirements.achievedColorValues
-															.lab.l
-											}
-											onChange={e =>
-												setFormData(prev => ({
-													...prev,
-													technicalRequirements: {
-														...prev.technicalRequirements,
-														achievedColorValues: {
-															...prev.technicalRequirements.achievedColorValues,
-															lab: {
-																...prev.technicalRequirements
-																	.achievedColorValues.lab,
-																l:
-																	e.target.value === ''
-																		? 0
-																		: Number(e.target.value) || 0,
-															},
-														},
-													},
-												}))
-											}
-											className={`w-full px-2 py-1 text-sm rounded border ${
-												isDark
-													? 'bg-gray-700 border-gray-600 text-white'
-													: 'bg-white border-gray-300 text-gray-900'
-											} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-											placeholder='50'
-										/>
-									</div>
-									<div>
-										<label
-											className={`block text-xs font-medium mb-1 ${
-												isDark ? 'text-gray-300' : 'text-gray-700'
-											}`}
-										>
-											a
-										</label>
-										<input
-											type='number'
-											step='0.1'
-											value={
-												formData.technicalRequirements.achievedColorValues.lab
-													.a === 0
-													? ''
-													: formData.technicalRequirements.achievedColorValues
-															.lab.a
-											}
-											onChange={e =>
-												setFormData(prev => ({
-													...prev,
-													technicalRequirements: {
-														...prev.technicalRequirements,
-														achievedColorValues: {
-															...prev.technicalRequirements.achievedColorValues,
-															lab: {
-																...prev.technicalRequirements
-																	.achievedColorValues.lab,
-																a:
-																	e.target.value === ''
-																		? 0
-																		: Number(e.target.value) || 0,
-															},
-														},
-													},
-												}))
-											}
-											className={`w-full px-2 py-1 text-sm rounded border ${
-												isDark
-													? 'bg-gray-700 border-gray-600 text-white'
-													: 'bg-white border-gray-300 text-gray-900'
-											} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-											placeholder='0'
-										/>
-									</div>
-									<div>
-										<label
-											className={`block text-xs font-medium mb-1 ${
-												isDark ? 'text-gray-300' : 'text-gray-700'
-											}`}
-										>
-											b
-										</label>
-										<input
-											type='number'
-											step='0.1'
-											value={
-												formData.technicalRequirements.achievedColorValues.lab
-													.b === 0
-													? ''
-													: formData.technicalRequirements.achievedColorValues
-															.lab.b
-											}
-											onChange={e =>
-												setFormData(prev => ({
-													...prev,
-													technicalRequirements: {
-														...prev.technicalRequirements,
-														achievedColorValues: {
-															...prev.technicalRequirements.achievedColorValues,
-															lab: {
-																...prev.technicalRequirements
-																	.achievedColorValues.lab,
-																b:
-																	e.target.value === ''
-																		? 0
-																		: Number(e.target.value) || 0,
-															},
-														},
-													},
-												}))
-											}
-											className={`w-full px-2 py-1 text-sm rounded border ${
-												isDark
-													? 'bg-gray-700 border-gray-600 text-white'
-													: 'bg-white border-gray-300 text-gray-900'
-											} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-											placeholder='0'
-										/>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						{/* Заметки о производстве */}
-						<div>
-							<label
-								className={`block text-sm font-medium mb-2 ${
-									isDark ? 'text-gray-300' : 'text-gray-700'
-								}`}
-							>
-								Заметки о процессе создания
-							</label>
-							<textarea
-								value={formData.technicalRequirements.productionNotes}
-								onChange={e =>
-									setFormData(prev => ({
-										...prev,
-										technicalRequirements: {
-											...prev.technicalRequirements,
-											productionNotes: e.target.value,
-										},
-									}))
-								}
-								rows={3}
-								className={`w-full px-3 py-2 rounded-lg border ${
-									isDark
-										? 'bg-gray-700 border-gray-600 text-white'
-										: 'bg-white border-gray-300 text-gray-900'
-								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-								placeholder='Опишите особенности процесса создания цвета, использованные материалы, оборудование и т.д.'
+								placeholder='Напр., ТК-1234'
 							/>
 						</div>
 					</div>
 
-					{/* Примечания */}
 					<div>
-						<label
-							className={`block text-sm font-medium mb-2 ${
-								isDark ? 'text-gray-300' : 'text-gray-700'
-							}`}
-						>
-							Примечания
+						<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+							Причина создания *
 						</label>
 						<textarea
-							value={formData.notes}
-							onChange={e =>
-								setFormData(prev => ({ ...prev, notes: e.target.value }))
-							}
+							value={formData.description}
+							onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
 							rows={3}
 							className={`w-full px-3 py-2 rounded-lg border ${
-								isDark
-									? 'bg-gray-700 border-gray-600 text-white'
-									: 'bg-white border-gray-300 text-gray-900'
+								isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
 							} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-							placeholder='Дополнительная информация'
+							placeholder='Опишите, зачем требуется новый цвет'
+							required
 						/>
 					</div>
 
-					{/* Кнопки */}
+					<div className='grid grid-cols-3 gap-4'>
+						<div>
+							<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>L</label>
+							<input
+								type='number'
+								step='0.1'
+								value={formData.lab.l}
+								onChange={e => setFormData(prev => ({ ...prev, lab: { ...prev.lab, l: e.target.value } }))}
+								className={`w-full px-3 py-2 rounded-lg border ${
+									isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+								placeholder='L'
+							/>
+						</div>
+						<div>
+							<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>a</label>
+							<input
+								type='number'
+								step='0.1'
+								value={formData.lab.a}
+								onChange={e => setFormData(prev => ({ ...prev, lab: { ...prev.lab, a: e.target.value } }))}
+								className={`w-full px-3 py-2 rounded-lg border ${
+									isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+								placeholder='a'
+							/>
+						</div>
+						<div>
+							<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>b</label>
+							<input
+								type='number'
+								step='0.1'
+								value={formData.lab.b}
+								onChange={e => setFormData(prev => ({ ...prev, lab: { ...prev.lab, b: e.target.value } }))}
+								className={`w-full px-3 py-2 rounded-lg border ${
+									isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+								} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+								placeholder='b'
+							/>
+						</div>
+					</div>
+
+					<div>
+						<label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+							Заметки о процессе создания (необязательно)
+						</label>
+						<textarea
+							value={formData.productionNotes}
+							onChange={e => setFormData(prev => ({ ...prev, productionNotes: e.target.value }))}
+							rows={3}
+							required={false}
+							className={`w-full px-3 py-2 rounded-lg border ${
+								isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+							} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+							placeholder='Опишите важные моменты процесса'
+						/>
+					</div>
+
 					<div className='flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
-						<Button
-							type='button'
-							onClick={handleClose}
-							variant='outline'
-							className='px-6'
-						>
+						<Button type='button' onClick={handleClose} variant='outline' className='px-6'>
 							Отмена
 						</Button>
-						<Button
-							type='submit'
-							disabled={loading}
-							className='px-6 bg-yellow-500 hover:bg-yellow-600 text-white'
-						>
+						<Button type='submit' disabled={loading} className='px-6 bg-yellow-500 hover:bg-yellow-600 text-white'>
 							{loading ? 'Сохранение...' : 'Сохранить'}
 						</Button>
 					</div>

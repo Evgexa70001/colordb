@@ -32,7 +32,7 @@ export default function NewCategoryModal({
         <Dialog.Panel
           className={`mx-auto max-w-lg w-full rounded-lg p-6 ${
             isDark ? 'bg-gray-800' : 'bg-white'
-          }`}>
+          } max-h-[90vh] overflow-y-auto`}>
           <Dialog.Title
             className={`text-lg font-medium mb-4 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
             Добавить новую категорию

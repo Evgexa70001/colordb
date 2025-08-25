@@ -339,6 +339,8 @@ export interface ColorCreationReason {
 	colorName: string
 	createdAt: Date
 	createdBy: string
+	// Номер тех. карты (ТР). Обязательное поле по новой спецификации
+	technicalCardNumber?: string
 	description: string
 	technicalRequirements?: {
 		actualColorAccuracy?: number // фактическая точность ΔE созданного цвета

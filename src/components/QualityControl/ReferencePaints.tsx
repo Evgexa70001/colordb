@@ -216,7 +216,7 @@ const ReferencePaints: React.FC<ReferencePaintsProps> = ({
 					<div
 						className={`p-6 rounded-lg w-full max-w-md ${
 							isDark ? 'bg-gray-800' : 'bg-white'
-						}`}
+						} max-h-[90vh] overflow-y-auto`}
 					>
 						<h3
 							className={`text-lg font-semibold mb-4 ${
@@ -350,9 +350,9 @@ const ReferencePaints: React.FC<ReferencePaintsProps> = ({
 			{viewingPaint && (
 				<div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
 					<div
-						className={`p-6 rounded-lg w-full max-w-md ${
-							isDark ? 'bg-gray-800' : 'bg-white'
-						}`}
+						className={`p-6 rounded-lg w-full max-w-md 
+							${isDark ? 'bg-gray-800' : 'bg-white'}
+							max-h-[90vh] overflow-y-auto`}
 					>
 						<div className='flex justify-between items-start mb-4'>
 							<h3

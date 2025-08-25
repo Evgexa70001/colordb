@@ -30,7 +30,8 @@ export async function saveReferencePaint(
 		
 		const docRef = await addDoc(referencePaintsRef, {
 			...cleanPaint,
-			createdAt: serverTimestamp(),
+			// сохраняем дату, выбранную пользователем; если её нет, используем серверную
+			createdAt: cleanPaint.createdAt ?? serverTimestamp(),
 			updatedAt: serverTimestamp(),
 		})
 		return docRef
@@ -100,10 +101,27 @@ export async function getReferencePaints(): Promise<ReferencePaint[]> {
 		const q = query(referencePaintsRef, orderBy('createdAt', 'desc'))
 		const querySnapshot = await getDocs(q)
 		
-		return querySnapshot.docs.map(doc => ({
-			id: doc.id,
-			...doc.data(),
-		})) as ReferencePaint[]
+		return querySnapshot.docs.map(doc => {
+			const data = doc.data() as any
+			const rawCreatedAt = data.createdAt
+			let createdAt: Date
+
+			if (rawCreatedAt?.toDate) {
+				createdAt = rawCreatedAt.toDate()
+			} else if (rawCreatedAt?.seconds) {
+				createdAt = new Date(rawCreatedAt.seconds * 1000)
+			} else if (typeof rawCreatedAt === 'string' || rawCreatedAt instanceof Date) {
+				createdAt = new Date(rawCreatedAt)
+			} else {
+				createdAt = new Date()
+			}
+
+			return {
+				id: doc.id,
+				...data,
+				createdAt,
+			} as ReferencePaint
+		})
 	} catch (error) {
 		const firestoreError = error as FirestoreError
 		if (

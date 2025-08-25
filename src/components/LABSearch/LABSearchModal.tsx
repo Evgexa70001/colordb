@@ -45,7 +45,7 @@ export default function LABSearchModal({
 				<Dialog.Panel
 					className={`mx-auto max-w-md w-full rounded-xl p-6 shadow-xl ${
 						isDark ? 'bg-gray-800' : 'bg-white'
-					}`}
+					} max-h-[90vh] overflow-y-auto`}
 				>
 					<div className='flex justify-between items-start mb-6'>
 						<Dialog.Title
