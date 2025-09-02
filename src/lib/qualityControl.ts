@@ -157,8 +157,14 @@ export async function saveNewPaintTest(
 			delete cleanTest.deltaE2000
 		}
 		
+		// expiryDate приводим к Date, Firestore сам сохранит как Timestamp
+		const expiryDateValue = cleanTest.expiryDate instanceof Date
+			? cleanTest.expiryDate
+			: new Date(cleanTest.expiryDate)
+
 		const docRef = await addDoc(newPaintTestsRef, {
 			...cleanTest,
+			expiryDate: expiryDateValue,
 			testedAt: serverTimestamp(),
 			createdAt: serverTimestamp(),
 		})
@@ -238,10 +244,30 @@ export async function getNewPaintTests(): Promise<NewPaintTest[]> {
 		const q = query(newPaintTestsRef, orderBy('testedAt', 'desc'))
 		const querySnapshot = await getDocs(q)
 		
-		return querySnapshot.docs.map(doc => ({
-			id: doc.id,
-			...doc.data(),
-		})) as NewPaintTest[]
+		return querySnapshot.docs.map(d => {
+			const data = d.data() as any
+			const rawTestedAt = data.testedAt
+			const rawExpiryDate = data.expiryDate
+
+			let testedAt: Date
+			if (rawTestedAt?.toDate) testedAt = rawTestedAt.toDate()
+			else if (rawTestedAt?.seconds) testedAt = new Date(rawTestedAt.seconds * 1000)
+			else if (typeof rawTestedAt === 'string' || rawTestedAt instanceof Date) testedAt = new Date(rawTestedAt)
+			else testedAt = new Date()
+
+			let expiryDate: Date
+			if (rawExpiryDate?.toDate) expiryDate = rawExpiryDate.toDate()
+			else if (rawExpiryDate?.seconds) expiryDate = new Date(rawExpiryDate.seconds * 1000)
+			else if (typeof rawExpiryDate === 'string' || rawExpiryDate instanceof Date) expiryDate = new Date(rawExpiryDate)
+			else expiryDate = new Date()
+
+			return {
+				id: d.id,
+				...data,
+				testedAt,
+				expiryDate,
+			} as NewPaintTest
+		})
 	} catch (error) {
 		const firestoreError = error as FirestoreError
 		if (
