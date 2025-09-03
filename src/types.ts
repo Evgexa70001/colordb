@@ -116,11 +116,13 @@ export interface ColorDetailsModalProps {
 			name: string
 			hex: string
 			isAdditional: boolean
+			anilox?: string
 		}
 		matchedWith?: {
 			name: string
 			hex: string
 			isAdditional: boolean
+			anilox?: string
 		}
 	})[]
 }

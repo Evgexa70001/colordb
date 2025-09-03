@@ -24,6 +24,7 @@ interface SimilarColorCardProps {
 			name: string
 			hex: string
 			isAdditional: boolean
+			anilox?: string
 		}
 	}
 	originalColor?: PantoneColor // Добавляем оригинальный цвет для расчета калиброванного дельта E
@@ -40,20 +41,25 @@ export default function SimilarColorCard({ color, originalColor }: SimilarColorC
 		return 'Явное различие'
 	}
 
-	// Pantone logic
+	// Pantone logic (по базовому цвету)
 	const pantoneMatch = findPantoneByHex(color.hex)
-	const lab = color.labValues || hexToLab(color.hex)
-	const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(lab)
+	const baseLab = color.labValues || hexToLab(color.hex)
+	const closestPantone = pantoneMatch ? null : findClosestPantoneByLab(baseLab)
 
-	// Расчет калиброванного дельта E для X-Rite
+	// Если совпадение с доп. цветом, сравниваем именно с ним
+	const comparisonLab = color.matchedWith?.isAdditional
+		? hexToLab(color.matchedWith.hex)
+		: baseLab
+
+	// Расчет калиброванного дельта E для X-Rite (относительно comparisonLab)
 	const calibratedDeltaE = originalColor?.labValues ? 
 		calculateDeltaEWithCalibration(
 			originalColor.labValues,
-			lab,
+			comparisonLab,
 			SPECTROPHOTOMETER_CALIBRATIONS.xrite
 		) : null
 
-	// Используем калиброванный дельта E если доступен, иначе стандартный
+	// Используем калиброванный дельта E если доступен, иначе стандартный (distance уже учитывает доп. цвет при поиске)
 	const displayDeltaE = calibratedDeltaE !== null ? calibratedDeltaE : (color.distance?.deltaE2000 || 0)
 
 	return (
@@ -134,7 +140,8 @@ export default function SimilarColorCard({ color, originalColor }: SimilarColorC
 						isDark ? 'text-gray-300' : 'text-gray-600'
 					}`}
 				>
-					Совпадение с дополнительным цветом: {color.matchedWith.name}
+					Совпадение с доп. цветом: {color.matchedWith.name}
+					{color.matchedWith.anilox ? ` · анилокс ${color.matchedWith.anilox}` : ''}
 				</p>
 			)}
 		</div>

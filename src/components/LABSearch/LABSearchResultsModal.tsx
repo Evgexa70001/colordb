@@ -64,13 +64,41 @@ export default function LABSearchResultsModal({
 
 		const results = colors
 			.map(color => {
-				// Используем сохраненные LAB координаты, если они есть, иначе конвертируем из HEX
-				const colorLab = color.labValues || hexToLab(color.hex)
-				const distance = getLabDistance(searchLab, colorLab)
+				// Основной цвет
+				const baseLab = color.labValues || hexToLab(color.hex)
+				const baseDistance = getLabDistance(searchLab, baseLab)
+
+				let selectedDistance = baseDistance
+				let matchedWith: { name: string; hex: string; isAdditional: boolean; anilox?: string } | undefined
+
+				// Проверяем дополнительные цвета
+				if (color.additionalColors && color.additionalColors.length > 0) {
+					for (const add of color.additionalColors) {
+						const addLab = add.labValues || hexToLab(add.hex)
+						const addDistance = getLabDistance(searchLab, addLab)
+						const addDelta = useXriteCalibration && addDistance.calibratedDeltaE !== undefined
+							? addDistance.calibratedDeltaE
+							: addDistance.deltaE2000
+						const currentDelta = useXriteCalibration && selectedDistance.calibratedDeltaE !== undefined
+							? selectedDistance.calibratedDeltaE
+							: selectedDistance.deltaE2000
+
+						if (addDelta < currentDelta) {
+							selectedDistance = addDistance
+							matchedWith = {
+								name: add.name,
+								hex: add.hex,
+								isAdditional: true,
+								anilox: add.anilox,
+							}
+						}
+					}
+				}
 
 				return {
 					...color,
-					distance,
+					distance: selectedDistance,
+					matchedWith,
 				}
 			})
 			.filter(color => {
