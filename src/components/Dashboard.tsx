@@ -18,6 +18,7 @@ import {
 	Target,
 	Palette,
 	GitCompare,
+	Info, // Добавить эту строку
 	// Beaker,
 } from 'lucide-react'
 import { useTheme } from '@contexts/ThemeContext'
@@ -61,6 +62,7 @@ import AnalyticsDashboard, {
 } from './Analytics/AnalyticsDashboard'
 import ColorComparisonModal from './ColorComparison'
 import { trackColorCreated } from '@lib/analytics'
+import CategoryInfoModal from './CategoryInfo/CategoryInfoModal'
 
 type SortField = 'name' | 'inStock' | 'createdAt' | 'usageCount'
 type SortOrder = 'asc' | 'desc'
@@ -473,6 +475,7 @@ export default function Dashboard() {
 	const [isComparisonMode, setIsComparisonMode] = useState(false)
 	const [selectedColorsForComparison, setSelectedColorsForComparison] = useState<PantoneColor[]>([])
 	const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false)
+	const [isCategoryInfoModalOpen, setIsCategoryInfoModalOpen] = useState(false)
 	// const navigate = useNavigate();
 	// const location = useLocation();
 
@@ -1314,6 +1317,18 @@ export default function Dashboard() {
 									>
 										{isComparisonMode ? 'Отменить сравнение' : 'Сравнить цвета'}
 									</Button>
+									<Button
+										className='w-full justify-start text-sm'
+										variant='secondary'
+										leftIcon={<Info className='w-4 h-4' />}
+										onClick={() => {
+											setIsCategoryInfoModalOpen(true)
+											setSidebarOpen(false)
+										}}
+										size="sm"
+									>
+										Информация
+									</Button>
 								</div>
 							</div>
 						)}
@@ -1796,6 +1811,11 @@ export default function Dashboard() {
 					</div>
 				</div>
 			)}
+
+			<CategoryInfoModal
+				isOpen={isCategoryInfoModalOpen}
+				onClose={() => setIsCategoryInfoModalOpen(false)}
+			/>
 		</div>
 	)
 }
