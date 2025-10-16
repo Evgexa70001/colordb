@@ -1304,8 +1304,8 @@ export default function ColorCard({
 						{/* Expanded Additional Colors Content */}
 						<div className={`overflow-hidden transition-all duration-300 ease-out ${
 							expandedAdditionalColors 
-								? 'max-h-96 opacity-100' 
-								: 'max-h-0 opacity-0'
+								? 'max-h-[60vh] opacity-100 overflow-y-auto' 
+								: 'max-h-0 opacity-0 overflow-hidden'
 						}`}>
 							<div className='px-4 pb-4 space-y-3'>
 								<div className={`h-px ${isDark ? 'bg-violet-700/30' : 'bg-violet-300/30'}`} />
