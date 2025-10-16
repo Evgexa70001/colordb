@@ -82,7 +82,7 @@ export default function ColorDetailsModal({
 	const findSimilarColorsByLAB = () => {
 		if (!colorLab) return []
 
-		const LAB_TOLERANCE = 10 // Увеличиваем порог для включения цветов с дельта E 2.7
+		const LAB_TOLERANCE = 6 // Увеличиваем порог для включения цветов с дельта E 2.7
 		const results: (PantoneColor & {
 			distance: { deltaE2000: number; deltaE76: number }
 		})[] = []
@@ -100,7 +100,10 @@ export default function ColorDetailsModal({
 					otherLab,
 					SPECTROPHOTOMETER_CALIBRATIONS.xrite
 				)
-				deltaE = Math.min(deltaE, calibratedDeltaE)
+				// Используем калиброванный дельта E только если он меньше обычного
+				if (calibratedDeltaE < deltaE) {
+					deltaE = calibratedDeltaE
+				}
 			}
 
 			if (deltaE <= LAB_TOLERANCE) {

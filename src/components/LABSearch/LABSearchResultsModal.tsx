@@ -60,7 +60,7 @@ export default function LABSearchResultsModal({
 		}
 
 		const searchLab = { l: lValue, a: aValue, b: bValue }
-		const LAB_TOLERANCE = useXriteCalibration ? 15 : 10 // Увеличиваем допуск для калиброванного поиска
+		const LAB_TOLERANCE = 6 // Изменяем с 15/10 на 6 для соответствия основному фильтру
 
 		const results = colors
 			.map(color => {
@@ -102,7 +102,7 @@ export default function LABSearchResultsModal({
 				}
 			})
 			.filter(color => {
-				// Используем калиброванный дельта E если включена калибровка X-Rite
+				// Всегда используем калиброванный дельта E если включена калибровка X-Rite
 				const deltaE = useXriteCalibration && color.distance.calibratedDeltaE !== undefined
 					? color.distance.calibratedDeltaE
 					: color.distance.deltaE2000

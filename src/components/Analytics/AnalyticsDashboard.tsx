@@ -646,15 +646,13 @@ ${
 					</h3>
 					<div className='space-y-3'>
 						{safeMetrics.monthlyCreatedColors.length > 0 ? (
-							safeMetrics.monthlyCreatedColors
-								.slice(0, 5)
-								.map(color => (
-									<CreatedColorItem
-										key={color.colorId}
-										color={color}
-										isDark={isDark}
-									/>
-								))
+							safeMetrics.monthlyCreatedColors.map(color => (
+								<CreatedColorItem
+									key={color.colorId}
+									color={color}
+									isDark={isDark}
+								/>
+							))
 						) : (
 							<p
 								className={`text-xs sm:text-sm ${

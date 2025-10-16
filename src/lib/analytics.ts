@@ -480,7 +480,7 @@ async function getColorsCreatedInMonth(
 			...data,
 		}))
 		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-		.slice(0, 10)
+		// Убираем .slice(0, 10) чтобы показать все цвета
 }
 
 // Генерация еженедельного отчета
@@ -887,25 +887,19 @@ export async function performAutomaticCleanup(): Promise<void> {
 	}
 }
 
-// Функция для получения аналитики неиспользуемых цветов по месяцам
-export async function getUnusedColorsAnalytics(
-	period: '3months' | '6months' | '12months' = '6months'
-): Promise<
-	Array<{
-		month: string
-		totalUnused: number
-		unusedColors: Array<{
-			colorId: string
-			colorName: string
-			hex: string
-			lastUsed: Date | null
-			createdAt: Date
-			daysUnused: number
-			recipe?: string
-		}>
-		trend: 'increasing' | 'decreasing' | 'stable'
+// Новая функция для получения неиспользуемых цветов за весь период
+export async function getAllUnusedColors(): Promise<{
+	totalUnused: number
+	unusedColors: Array<{
+		colorId: string
+		colorName: string
+		hex: string
+		lastUsed: Date | null
+		createdAt: Date
+		daysUnused: number
+		recipe?: string
 	}>
-> {
+}> {
 	try {
 		// Получаем все цвета
 		const colorsSnapshot = await getDocs(collection(db, 'colors'))
@@ -926,146 +920,104 @@ export async function getUnusedColorsAnalytics(
 		)
 		const allUsageEvents = await getDocs(usageEventsQuery)
 
-		// Определяем период для анализа - начинаем с текущего месяца
-		const now = new Date()
-		const monthsToAnalyze =
-			period === '3months' ? 3 : period === '6months' ? 6 : 12
+		// Находим неиспользуемые цвета (90 дней и больше)
+		const unusedColors = colors
+			.filter(color => {
+				// Ищем последнее использование цвета
+				const colorUsageEvents = allUsageEvents.docs.filter(doc => {
+					const data = doc.data()
+					return data.colorId === color.id
+				})
 
-		const monthlyStats: Array<{
-			month: string
-			totalUnused: number
-			unusedColors: Array<{
-				colorId: string
-				colorName: string
-				hex: string
-				lastUsed: Date | null
-				createdAt: Date
-				daysUnused: number
-				recipe?: string
-			}>
-			trend: 'increasing' | 'decreasing' | 'stable'
-		}> = []
+				// Если нет событий использования, проверяем дату создания
+				if (colorUsageEvents.length === 0) {
+					const createdDate =
+						typeof color.createdAt === 'object' && 'seconds' in color.createdAt
+							? new Date(color.createdAt.seconds * 1000)
+							: new Date(color.createdAt || new Date())
+					
+					const daysSinceCreation = Math.floor(
+						(new Date().getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+					)
+					
+					// Возвращаем true только если цвет создан больше 90 дней назад
+					return daysSinceCreation >= 90
+				}
 
-		// Анализируем каждый месяц, начиная с текущего
-		for (let i = 0; i < monthsToAnalyze; i++) {
-			const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
-			const monthEnd = new Date(
-				now.getFullYear(),
-				now.getMonth() - i + 1,
-				0,
-				23,
-				59,
-				59,
-				999
-			)
-			const monthName = monthStart.toLocaleDateString('ru-RU', {
-				month: 'long',
-				year: 'numeric',
+				// Если есть события использования, находим последнее
+				const lastUsed = colorUsageEvents.reduce((latest, doc) => {
+					const data = doc.data()
+					const eventTime = data.timestamp?.toDate?.() || data.timestamp
+					return eventTime > latest ? eventTime : latest
+				}, new Date(0))
+
+				// Проверяем, что последнее использование было больше 90 дней назад
+				const daysSinceLastUse = Math.floor(
+					(new Date().getTime() - lastUsed.getTime()) / (1000 * 60 * 60 * 24)
+				)
+				
+				return daysSinceLastUse >= 90
 			})
+			.map(color => {
+				// Находим последнее использование для расчета дней
+				const colorUsageEvents = allUsageEvents.docs.filter(doc => {
+					const data = doc.data()
+					return data.colorId === color.id
+				})
 
-			// Находим неиспользуемые цвета для этого месяца
-			const unusedColors = colors
-				.filter(color => {
-					// Ищем последнее использование цвета
-					const colorUsageEvents = allUsageEvents.docs.filter(doc => {
-						const data = doc.data()
-						return data.colorId === color.id
-					})
+				let lastUsed: Date | null = null
+				let daysUnused = 0
 
-					if (colorUsageEvents.length === 0) {
-						// Цвет никогда не использовался
-						const createdDate =
-							typeof color.createdAt === 'object' &&
-							'seconds' in color.createdAt
-								? new Date(color.createdAt.seconds * 1000)
-								: new Date(color.createdAt || new Date())
-
-						return createdDate <= monthEnd
-					}
-
-					// Находим последнее использование
-					const lastUsage = colorUsageEvents.reduce((latest, doc) => {
+				if (colorUsageEvents.length > 0) {
+					lastUsed = colorUsageEvents.reduce((latest, doc) => {
 						const data = doc.data()
 						const eventTime = data.timestamp?.toDate?.() || data.timestamp
 						return eventTime > latest ? eventTime : latest
 					}, new Date(0))
 
-					// Цвет не использовался в этом месяце
-					return lastUsage < monthStart
-				})
-				.map(color => {
-					// Находим последнее использование для расчета дней
-					const colorUsageEvents = allUsageEvents.docs.filter(doc => {
-						const data = doc.data()
-						return data.colorId === color.id
-					})
-
-					let lastUsed: Date | null = null
-					let daysUnused = 0
-
-					if (colorUsageEvents.length > 0) {
-						lastUsed = colorUsageEvents.reduce((latest, doc) => {
-							const data = doc.data()
-							const eventTime = data.timestamp?.toDate?.() || data.timestamp
-							return eventTime > latest ? eventTime : latest
-						}, new Date(0))
-
-						daysUnused = Math.floor(
-							(now.getTime() - lastUsed.getTime()) / (1000 * 60 * 60 * 24)
-						)
-					} else {
-						// Цвет никогда не использовался
-						const createdDate =
-							typeof color.createdAt === 'object' &&
-							'seconds' in color.createdAt
-								? new Date(color.createdAt.seconds * 1000)
-								: new Date(color.createdAt || new Date())
-
-						daysUnused = Math.floor(
-							(now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
-						)
-					}
-
+					daysUnused = Math.floor(
+						(new Date().getTime() - lastUsed.getTime()) / (1000 * 60 * 60 * 24)
+					)
+				} else {
+					// Цвет никогда не использовался
 					const createdDate =
 						typeof color.createdAt === 'object' && 'seconds' in color.createdAt
 							? new Date(color.createdAt.seconds * 1000)
 							: new Date(color.createdAt || new Date())
 
-					return {
-						colorId: color.id,
-						colorName: color.alternativeName
-							? `${color.name} (${color.alternativeName})`
-							: color.name,
-						hex: color.hex,
-						lastUsed,
-						createdAt: createdDate,
-						daysUnused,
-						recipe: color.recipe,
-					}
-				})
-
-			// Определяем тренд (сравниваем с предыдущим месяцем)
-			let trend: 'increasing' | 'decreasing' | 'stable' = 'stable'
-			if (monthlyStats.length > 0) {
-				const previousMonth = monthlyStats[monthlyStats.length - 1]
-				if (unusedColors.length > previousMonth.totalUnused) {
-					trend = 'increasing'
-				} else if (unusedColors.length < previousMonth.totalUnused) {
-					trend = 'decreasing'
+					daysUnused = Math.floor(
+						(new Date().getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+					)
 				}
-			}
 
-			monthlyStats.push({
-				month: monthName,
-				totalUnused: unusedColors.length,
-				unusedColors: unusedColors.sort((a, b) => b.daysUnused - a.daysUnused),
-				trend,
+				const createdDate =
+					typeof color.createdAt === 'object' && 'seconds' in color.createdAt
+						? new Date(color.createdAt.seconds * 1000)
+						: new Date(color.createdAt || new Date())
+
+				return {
+					colorId: color.id,
+					colorName: color.alternativeName
+						? `${color.name} (${color.alternativeName})`
+						: color.name,
+					hex: color.hex,
+					lastUsed,
+					createdAt: createdDate,
+					daysUnused,
+					recipe: color.recipe,
+				}
 			})
-		}
+			.sort((a, b) => b.daysUnused - a.daysUnused) // Сортируем по количеству дней неиспользования
 
-		return monthlyStats.reverse() // Сортируем по хронологии
+		return {
+			totalUnused: unusedColors.length,
+			unusedColors,
+		}
 	} catch (error) {
-		console.error('Error getting unused colors analytics:', error)
-		return []
+		console.error('Error getting all unused colors:', error)
+		return {
+			totalUnused: 0,
+			unusedColors: [],
+		}
 	}
 }
